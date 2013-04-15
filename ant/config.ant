@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!-- the project global configuration for the build system.
+ 
+ Please: be very careful when modifing this, as this file lives in GIT and you can easily break
+ other peoples system when commiting changes to this file. -->
+
+<project name="config">
+	
+	<!-- first of all the name of this project -->
+	<property name="app.name" value="RefParse" />
+	
+	<!-- =================================================================== -->
+	<!-- DIRECTORY CONFIGURATION -->
+	
+	<!-- root directory of the common source tree -->
+	<property name="src.home" value="src" />
+	
+	<!-- directory of all the static content -->
+	<property name="data.home" value="dataFiles" />
+	
+	<!-- build directory that will contain all the .jars and what else is required for a .war -->
+	<property name="build.home" value="build" />
+	
+	<!-- directory that contains all libraries that are required in the .war -->
+	<property name="lib.home" value="lib" />
+	
+	<!-- directory that contains packed archives, such as the .war -->
+	<property name="dist.home" value="dist" />
+	
+	<!-- path to the .jar file that shall be created -->
+	<property name="jar.file" value="${build.home}/${app.name}.jar" />
+	
+	<!-- path to the .jar file that shall be created -->
+	<property name="zip.file" value="${dist.home}/${app.name}.zip" />
+</project>

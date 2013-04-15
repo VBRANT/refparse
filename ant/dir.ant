@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!-- manages the directory structure for the build process.
+
+	This means it creates all the temporary directories and copies files between them.
+	It is also responsible for cleaning up the whole mess afterwards. -->
+
+<project name="dir">
+	
+	<!-- create the required directories -->
+	<target name="mkdirs">
+		<mkdir dir="${build.home}" />
+		<mkdir dir="${build.home}/classes" />
+		<mkdir dir="${build.home}/RefParseData" />
+		<mkdir dir="${dist.home}" />
+	</target>
+	
+	<!-- more or less the reverse of it, delete all the directories again -->
+	<target name="clean" description="remove all auto-generated files" >
+		<!--delete dir="${build.home}/classes" /-->
+		<delete includeemptydirs="true">
+			<fileset dir="${build.home}" includes="**/*.class"/>
+		</delete>
+		<!--delete dir="${build.home}" /-->
+		<delete includeemptydirs="true">
+			<fileset dir="${build.home}" includes="*.txt"/>
+		</delete>
+		<!--delete dir="${dist.home}" /-->
+		<delete includeemptydirs="true">
+			<fileset dir="${dist.home}" includes="*.zip"/>
+		</delete>
+	</target>
+	
+	<!-- copy everything that needs to be in the .war -->
+	<target name="copy" depends="mkdirs" >
+		<!-- Copy static content of this web application -->
+    	<copy todir="${build.home}/RefParseData" overwrite="true" verbose="false">
+			<fileset dir="${data.home}" />
+		</copy>
+	</target>
+</project>
