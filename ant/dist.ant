@@ -11,6 +11,7 @@
 			<fileset dir="${build.home}/" includes="RefParseData/**"/>
 			<fileset dir="${build.home}/" includes="RefParse.jar"/>
 			<fileset dir="." includes="LICENSE.txt"/>
+			<fileset dir="." includes="README.txt"/>
 		</zip>
 	</target>
 	
