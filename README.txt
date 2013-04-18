@@ -25,17 +25,21 @@ SYSTEM REQUIREMENTS
 
 Java Runtime Environment 1.5 or higher, Sun/Oracle JRE recommended
 
-This project depends the JAR files build by the Ant scripts in the
-idaho-core (http://code.google.com/p/idaho-core/) and idaho-extensions
-(http://code.google.com/p/idaho-extensions/) projects, as well as the
-JAR files referenced from there.
-See http://code.google.com/p/idaho-core/source/browse/README.txt and
-http://code.google.com/p/idaho-extensions/source/browse/README.txt for
-the latter. You can either check out idaho-core and idaho-extensions
-into the same workspace and build it first, or include the JAR files it
-generates in the "lib" folder.
-In adddition, the required JAR files are included in this project's
-"lib" folder for convenience.
+
+
+DEPENDENCIES
+
+RefParse builds on other open source projects; the JAR files these projects
+build into are included in the "lib" folder for convenience.
+In addition, the Ant build script checks if these projects are present in your
+workspace, and if so, uses the recent builds found in their "dist" folders.
+
+- idaho-core (http://code.google.com/p/idaho-core/)
+
+- idaho-extensions (http://code.google.com/p/idaho-extensions/)
+
+- refparse (https://git.scratchpads.eu/v/refparse.git)
+
 
 
 GETTING STARTED
