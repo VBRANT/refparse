@@ -38,8 +38,6 @@ workspace, and if so, uses the recent builds found in their "dist" folders.
 
 - idaho-extensions (http://code.google.com/p/idaho-extensions/)
 
-- refparse (https://git.scratchpads.eu/v/refparse.git)
-
 
 
 GETTING STARTED

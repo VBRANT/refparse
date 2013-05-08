@@ -17,7 +17,6 @@
 	
 	<target name="jar">
 		<delete file="${jar.file}" />
-		<jar destfile="${jar.file}" basedir="${build.home}/classes" />
 		<jar destfile="${jar.file}">
 			<fileset dir="${build.home}/classes" includes="**/**.class"/>
 			<fileset dir="${src.home}" includes="**/**.java"/>
