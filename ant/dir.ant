@@ -30,12 +30,4 @@
 			<fileset dir="${dist.home}" includes="*.zip"/>
 		</delete>
 	</target>
-	
-	<!-- copy everything that needs to be in the .war -->
-	<target name="copy" depends="mkdirs" >
-		<!-- Copy static content of this web application -->
-    	<copy todir="${build.home}/RefParseData" overwrite="true" verbose="false">
-			<fileset dir="${data.home}" />
-		</copy>
-	</target>
 </project>

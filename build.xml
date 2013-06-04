@@ -21,7 +21,6 @@
 	</target>
 	
 	<target name="compile" description="do the compilation" >
-		<antcall target="dir.copy" />
 		<antcall target="javac.compile" />
 	</target>
 	
