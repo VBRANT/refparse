@@ -77,7 +77,7 @@ import de.uka.ipd.idaho.stringUtils.regExUtils.RegExUtils;
 
 /**
  * Source-wise singleton data container and utility class for the RefParse
- * bibliographies reference parsing algorithm.
+ * bibliographic reference parsing algorithm.
  * 
  * @author sautter
  */
