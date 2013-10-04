@@ -3078,6 +3078,39 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		}
 	}
 	
+	//	TODOne adjust exponents values SEEMS TO WORK LIKE THIS
+	private static final int matchExp = 3;
+	private static final int subsumeExp = 2;
+	private static final int getFuzzyScore(int sSize, String sString, LinkedHashSet sElements, StringIndex structureCounts, HashMap structureElementSets) {
+		int fuzzyScore = 0;
+		for (Iterator csit = structureElementSets.keySet().iterator(); csit.hasNext();) {
+			String cString = ((String) csit.next());
+			int fScore;
+			
+			//	structures equal, score like above
+			if (cString.equals(sString))
+//				fScore = (((int) Math.pow(sPunctSummaryElements.size(), 2)) * structureCounts.getCount(structure.typeString));
+				fScore = (((int) Math.pow(sSize, matchExp)) * structureCounts.getCount(cString));
+			
+			//	try subsumption match
+			else {
+				LinkedHashSet cElements = ((LinkedHashSet) structureElementSets.get(cString));
+				if (subsumes(cElements, sElements))
+//					fScore = (((int) Math.pow(sSummaryElements.size(), 2)) * structureCounts.getCount(typeString));
+//					fScore = (((int) Math.pow(structure.detailTypes.size(), 2)) * structureCounts.getCount(typeString));
+					fScore = (((((int) Math.pow(sSize, subsumeExp)) * structureCounts.getCount(cString)) * sElements.size()) / cElements.size());
+				else fScore = 0;
+			}
+			
+			//	add score
+//			fuzzyScore += fScore;
+			fuzzyScore = Math.max(fuzzyScore, fScore);
+		}
+		
+		//	finally ...
+		return fuzzyScore;
+	}
+	
 	private static boolean subsumes(LinkedHashSet higherStructure, LinkedHashSet lowerStructure) {
 		
 		//	lower structure larger than higher structure
@@ -3112,38 +3145,6 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		return true;
 	}
 	
-	//	TODOne adjust exponents values SEEMS TO WORK LIKE THIS
-	private static final int matchExp = 3;
-	private static final int subsumeExp = 2;
-	private static final int getFuzzyScore(int sSize, String sString, LinkedHashSet sElements, StringIndex structureCounts, HashMap structureElementSets) {
-		int fuzzyScore = 0;
-		for (Iterator csit = structureElementSets.keySet().iterator(); csit.hasNext();) {
-			String cString = ((String) csit.next());
-			int fScore;
-			
-			//	structures equal, score like above
-			if (cString.equals(sString))
-//				fScore = (((int) Math.pow(sPunctSummaryElements.size(), 2)) * structureCounts.getCount(structure.typeString));
-				fScore = (((int) Math.pow(sSize, matchExp)) * structureCounts.getCount(cString));
-			
-			//	try subsumption match
-			else {
-				LinkedHashSet cElements = ((LinkedHashSet) structureElementSets.get(cString));
-				if (subsumes(cElements, sElements))
-//					fScore = (((int) Math.pow(sSummaryElements.size(), 2)) * structureCounts.getCount(typeString));
-//					fScore = (((int) Math.pow(structure.detailTypes.size(), 2)) * structureCounts.getCount(typeString));
-					fScore = (((((int) Math.pow(sSize, subsumeExp)) * structureCounts.getCount(cString)) * sElements.size()) / cElements.size());
-				else fScore = 0;
-			}
-			
-			//	add score
-//			fuzzyScore += fScore;
-			fuzzyScore = Math.max(fuzzyScore, fScore);
-		}
-		
-		//	finally ...
-		return fuzzyScore;
-	}
 	private void extractVolumeReference(BibRef bibRef, String primarySeparator, AuthorListStyle authorListStyle) {
 		
 		Annotation[] volumeReferencePrefixes = Gamta.extractAllMatches(bibRef.annotation, "[IiEe][Nn]\\:?", 2);
@@ -4549,7 +4550,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 						als.nameCount += bibRefs[r].authorLists[l].authorNames.size();
 						als.tokenCount += bibRefs[r].authorLists[l].annotation.size();
 						als.startDistances.add("" + bibRefs[r].authorLists[l].annotation.getStartIndex());
-						als.endDistances.add("" + (bibRefs[r].annotation.size() - bibRefs[r].authorLists[l].annotation.getStartIndex()));
+						als.endDistances.add("" + (bibRefs[r].annotation.size() - bibRefs[r].authorLists[l].annotation.getEndIndex()));
 						als.bridged.addAll(bibRefs[r].authorLists[l].bridged);
 					}
 					
@@ -4558,7 +4559,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 			}
 		}
 		
-		//	sort auth author lists based on alignment vote
+		//	sort out author lists based on alignment vote
 		if (DEBUG_AUTHOR_LIST_ASSEMBLY) System.out.println("Author List Styles from " + bibRefs.length + " references:");
 		AuthorListStyle authorListStyle = null;
 		for (Iterator alsit = authorListStyles.keySet().iterator(); alsit.hasNext();) {
