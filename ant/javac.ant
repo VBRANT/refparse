@@ -19,7 +19,7 @@
 	<target name="compile" description="Compile RefParse Java sources">
 
 	    <!-- Compile Java classes as necessary -->
-	    <javac destdir="${build.home}/classes" includeantruntime="false" >
+	    <javac destdir="${build.home}/classes" includeantruntime="false" target="1.5" >
 	    	<src path="${src.home}" />
 	        <classpath refid="compile.classpath" />
 	    </javac>
