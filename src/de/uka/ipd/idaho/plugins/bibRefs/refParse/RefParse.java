@@ -5537,6 +5537,8 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		for (int r = 0; r < bibRefs.length; r++)
 			brpfps[r] = this.getFeedbackPanel(bibRefs[r], data.getDocumentProperty(DOCUMENT_ID_ATTRIBUTE), bibRefParagraphIDs, allowRemove, allowSplit);
 		
+		//	TODO observe flagging
+		
 		//	can we issue all dialogs at once?
 		if (FeedbackPanel.isMultiFeedbackEnabled()) {
 			FeedbackPanel.getMultiFeedback(brpfps);
@@ -5567,6 +5569,10 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 				f = "Cancel";
 			
 			brpfps[d].setTitle(aefpTitle);
+			
+			//	observe flagging
+			if (brpfps[d].getProperty(FeedbackPanel.FLAG_PROPERTY_NAME) != null)
+				bibRefs[d].setAttribute(("_" + FeedbackPanel.FLAG_PROPERTY_NAME), brpfps[d].getProperty(FeedbackPanel.FLAG_PROPERTY_NAME));
 			
 			//	current dialog submitted, process data
 			if (f.startsWith("OK")) {
