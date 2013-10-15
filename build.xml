@@ -7,8 +7,9 @@
 	<include file="ant/dir.ant" />
 	<include file="ant/javac.ant" />
 	<include file="ant/dist.ant" />
+	<include file="ant/import.ant" />
 	
-	<target name="all" depends="dirs,clean,compile,zip">
+	<target name="all" depends="dirs,clean,jars,compile,zip">
 		<!--<input message="Press Enter to start Tomcat.." />-->
 	</target>
 	
@@ -18,6 +19,10 @@
 	
 	<target name="dirs" description="remove all auto generated files" >
 		<antcall target="dir.mkdirs" />
+	</target>
+	
+	<target name="jars" description="get base jar files" >
+		<antcall target="import.fetch" />
 	</target>
 	
 	<target name="compile" description="do the compilation" >

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!--
+	Fetches OpenStringPool and RefParse from projects existing in same workspace
+-->
+
+<project name="import">
+	<target name="fetch" depends="fetch-su,fetch-hxu,fetch-gamta,fetch-eio,fetch-icmlib,fetch-img,fetch-fb" />
+	
+	<target name="check-fetch-su" unless="su.exists">
+		<available property="su.exists" file="../idaho-core/dist/StringUtils.jar"/>
+	</target>
+	<target name="fetch-su" depends="check-fetch-su" if="${su.exists}">
+    	<copy file="../idaho-core/dist/StringUtils.jar" todir="${lib.home}" overwrite="true" verbose="false" />
+	</target>
+	
+	<target name="check-fetch-hxu" unless="hxu.exists">
+		<available property="hxu.exists" file="../idaho-core/dist/HtmlXmlUtil.jar"/>
+	</target>
+	<target name="fetch-hxu" depends="check-fetch-hxu" if="${hxu.exists}">
+    	<copy file="../idaho-core/dist/HtmlXmlUtil.jar" todir="${lib.home}" overwrite="true" verbose="false" />
+	</target>
+	
+	<target name="check-fetch-gamta" unless="gamta.exists">
+		<available property="gamta.exists" file="../idaho-core/dist/Gamta.jar"/>
+	</target>
+	<target name="fetch-gamta" depends="check-fetch-gamta" if="${gamta.exists}">
+    	<copy file="../idaho-core/dist/Gamta.jar" todir="${lib.home}" overwrite="true" verbose="false" />
+	</target>
+	
+	<target name="check-fetch-eio" unless="eio.exists">
+		<available property="eio.exists" file="../idaho-core/dist/EasyIO.jar"/>
+	</target>
+	<target name="fetch-eio" depends="check-fetch-eio" if="${eio.exists}">
+    	<copy file="../idaho-core/dist/EasyIO.jar" todir="${lib.home}" overwrite="true" verbose="false" />
+	</target>
+	
+	<target name="check-fetch-icmlib" unless="icmlib.exists">
+		<available property="icmlib.exists" file="../idaho-core/lib/mail.jar"/>
+	</target>
+	<target name="fetch-icmlib" depends="check-fetch-icmlib" if="${icmlib.exists}">
+    	<copy file="../idaho-core/lib/mail.jar" todir="${lib.home}" overwrite="true" verbose="false" />
+	</target>
+	
+	<target name="check-fetch-ext" unless="ext.exists">
+		<available property="ext.exists" file="../idaho-extensions/dist/GamtaImagingAPI.jar"/>
+	</target>
+	<target name="fetch-img" depends="check-fetch-ext" if="${ext.exists}">
+    	<copy file="../idaho-extensions/dist/GamtaImagingAPI.jar" todir="${lib.home}" overwrite="true" verbose="false" />
+	</target>
+	<target name="fetch-fb" depends="check-fetch-ext" if="${ext.exists}">
+    	<copy file="../idaho-extensions/dist/GamtaFeedbackAPI.jar" todir="${lib.home}" overwrite="true" verbose="false" />
+	</target>
+</project>
