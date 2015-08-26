@@ -67,7 +67,6 @@ import de.uka.ipd.idaho.gamta.util.feedback.html.FeedbackPanelHtmlRenderer.Feedb
 import de.uka.ipd.idaho.gamta.util.feedback.html.renderers.AnnotationEditorFeedbackPanelRenderer;
 import de.uka.ipd.idaho.gamta.util.feedback.html.renderers.BufferedLineWriter;
 import de.uka.ipd.idaho.gamta.util.feedback.panels.AnnotationEditorFeedbackPanel;
-import de.uka.ipd.idaho.gamta.util.gPath.GPathParser;
 import de.uka.ipd.idaho.plugins.bibRefs.BibRefConstants;
 import de.uka.ipd.idaho.plugins.bibRefs.BibRefTypeSystem;
 import de.uka.ipd.idaho.stringUtils.StringIndex;
@@ -104,7 +103,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 	
 	private static final boolean DEBUG = true;
 	
-	private static final boolean DEBUG_STRUCTURE_SCORING = (DEBUG && false);
+	private static final boolean DEBUG_STRUCTURE_SCORING = (DEBUG && true);
 	
 	private static final boolean DEBUG_AUTHOR_NAME_EXTRACTION = (DEBUG && true);
 	private static final boolean DEBUG_AUTHOR_LIST_ASSEMBLY = (DEBUG && false);
@@ -144,6 +143,8 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 				color = Color.LIGHT_GRAY;
 			else if (PUBLICATION_URL_ANNOTATION_TYPE.equals(type))
 				color = Color.LIGHT_GRAY;
+			else if (BOOK_CONTENT_INFO_ANNOTATION_TYPE.equals(type))
+				color = FeedbackPanel.brighten(Color.BLUE);
 			else color = new Color(Color.HSBtoRGB(((float) Math.random()), 0.5f, 1.0f));
 			this.highlightAttributeCache.put(type, color);
 		}
@@ -293,7 +294,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 				"(pp\\.|pages)" +
 				"\\s" +
 			")?" +
-			"[1-9][0-9]{0,5}\\s\\-\\s[1-9][0-9]{0,5}";
+			"[1-9][0-9]{0,5}\\s*[\\-\\u2012-\\u2015]\\s*[1-9][0-9]{0,5}";
 	private String romanNumberRegEx = "((c?m+)?(c?d)?(x?c+)?(x?l)?(i?x+)?(i?v)?(i+)?)";
 	private String pageRangeRomanRegEx = 
 			"(" +
@@ -301,7 +302,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 				"\\s" +
 			")?" +
 			this.romanNumberRegEx +
-			"\\s\\-\\s" +
+			"\\s*[\\-\\u2012-\\u2015]\\s*" +
 			this.romanNumberRegEx;
 	
 	
@@ -487,7 +488,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		this.numberingInvalidatorsTailing.addContentIgnoreDuplicates(this.readList("numberingInvalidatorsTailing"));
 		
 		this.bookContentHintNumberingInvalidatorsTailing.clear();
-		this.bookContentHintNumberingInvalidatorsTailing.addContentIgnoreDuplicates(this.readList("bookContentHintNumberingInvalidatorsTailing"));
+		this.bookContentHintNumberingInvalidatorsTailing.addContentIgnoreDuplicates(this.readList("bookContentInfoNumberingInvalidatorsTailing"));
 		
 		this.numberingInvalidatorsTailing.addContentIgnoreDuplicates(this.bookContentHintNumberingInvalidatorsTailing);
 		
@@ -573,19 +574,27 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 			this.relevantTypes.addElementIgnoreDuplicates(EDITOR_ANNOTATION_TYPE);
 		this.relevantTypes.addElementIgnoreDuplicates(YEAR_ANNOTATION_TYPE);
 		this.relevantTypes.addElementIgnoreDuplicates(TITLE_ANNOTATION_TYPE);
-		if (integrateVolumeRefs)
-			this.relevantTypes.addElementIgnoreDuplicates(VOLUME_TITLE_ANNOTATION_TYPE);
 		if (detailOrigin) {
 			this.relevantTypes.addElementIgnoreDuplicates(VOLUME_TITLE_ANNOTATION_TYPE);
 			this.relevantTypes.addElementIgnoreDuplicates(JOURNAL_NAME_ANNOTATION_TYPE);
 			this.relevantTypes.addElementIgnoreDuplicates(PUBLISHER_ANNOTATION_TYPE);
 			this.relevantTypes.addElementIgnoreDuplicates(LOCATION_ANNOTATION_TYPE);
+			this.relevantTypes.removeAll(JOURNAL_NAME_OR_PUBLISHER_ANNOTATION_TYPE);
 		}
-		else this.relevantTypes.addElementIgnoreDuplicates(JOURNAL_NAME_OR_PUBLISHER_ANNOTATION_TYPE);
+		else {
+			this.relevantTypes.removeAll(VOLUME_TITLE_ANNOTATION_TYPE);
+			this.relevantTypes.removeAll(JOURNAL_NAME_ANNOTATION_TYPE);
+			this.relevantTypes.removeAll(PUBLISHER_ANNOTATION_TYPE);
+			this.relevantTypes.removeAll(LOCATION_ANNOTATION_TYPE);
+			this.relevantTypes.addElementIgnoreDuplicates(JOURNAL_NAME_OR_PUBLISHER_ANNOTATION_TYPE);
+		}
+		if (integrateVolumeRefs)
+			this.relevantTypes.addElementIgnoreDuplicates(VOLUME_TITLE_ANNOTATION_TYPE);
 		this.relevantTypes.addElementIgnoreDuplicates(PAGINATION_ANNOTATION_TYPE);
 		this.relevantTypes.addElementIgnoreDuplicates(PART_DESIGNATOR_ANNOTATION_TYPE);
 		this.relevantTypes.addElementIgnoreDuplicates(PUBLICATION_DOI_ANNOTATION_TYPE);
 		this.relevantTypes.addElementIgnoreDuplicates(PUBLICATION_URL_ANNOTATION_TYPE);
+		this.relevantTypes.addElementIgnoreDuplicates(BOOK_CONTENT_INFO_ANNOTATION_TYPE);
 		
 		//	add transferable types TODO check out if transfer is sensible (causes errors if element not given in subsequent references)
 		this.transferableTypes.addElementIgnoreDuplicates(AUTHOR_ANNOTATION_TYPE);
@@ -603,11 +612,11 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		this.referenceTypes.put(URL_REFERENCE_TYPE, new BibRefType(URL_REFERENCE_TYPE, "Online Document / Website / etc."));
 		
 		this.referenceTypeSystem = BibRefTypeSystem.getInstance(this.dataProvider, "RefClassifierTypeSystem.xml", false);
-		BibRefTypeSystem.BibRefType[] brts = this.referenceTypeSystem.getBibRefTypes();
-		for (int t = 0; t < brts.length; t++) {
-			if (!brts[t].name.startsWith("book"))
-				brts[t].addCondition(GPathParser.parseExpression("./@bookContentHint"), "Only books have content hints.");
-		}
+//		BibRefTypeSystem.BibRefType[] brts = this.referenceTypeSystem.getBibRefTypes();
+//		for (int t = 0; t < brts.length; t++) {
+//			if (!brts[t].name.startsWith("book"))
+//				brts[t].addCondition(GPathParser.parseExpression("./@bookContentInfo"), "Only books have content hints.");
+//		}
 		
 		//	load learned authors
 		try {
@@ -1072,9 +1081,9 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 			int maxPublisherEnd = bibRefs[r].annotation.size();
 			
 			//	check book content hints
-			if (bibRefs[r].bookContentHints.size() != 0) {
-				for (int h = 0; h < bibRefs[r].bookContentHints.size(); h++)
-					maxPublisherEnd = Math.min(maxPublisherEnd, ((Annotation) bibRefs[r].bookContentHints.get(h)).getStartIndex());
+			if (bibRefs[r].bookContentInfos.size() != 0) {
+				for (int h = 0; h < bibRefs[r].bookContentInfos.size(); h++)
+					maxPublisherEnd = Math.min(maxPublisherEnd, ((Annotation) bibRefs[r].bookContentInfos.get(h)).getStartIndex());
 			}
 			
 			//	check journal part designators
@@ -1207,7 +1216,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 			
 			//	prevent lone numbers (word blocks without actual words) from becoming titles by themselves ('1984' is rarely gonna be cited in science)
 			for (int b = 0; b < bibRefs[r].wordBlocks.length; b++) {
-				if ((bibRefs[r].bookContentHints.size() != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxPublisherEnd))
+				if ((bibRefs[r].bookContentInfos.size() != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxPublisherEnd))
 					break;
 				if ((partDesCount != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxJournalEnd))
 					break;
@@ -1257,7 +1266,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 				if (proceedingsTitles.length != 0) {
 					if (DEBUG) System.out.println(" - got proceedings title: '" + proceedingsTitles[proceedingsTitles.length-1].getValue() + "'");
 					for (int b = 0; b < bibRefs[r].wordBlocks.length; b++) {
-						if ((bibRefs[r].bookContentHints.size() != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxPublisherEnd) && (bibRefs[r].wordBlocks[lJopBlockIndex].getStartIndex() < maxPublisherEnd))
+						if ((bibRefs[r].bookContentInfos.size() != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxPublisherEnd) && (bibRefs[r].wordBlocks[lJopBlockIndex].getStartIndex() < maxPublisherEnd))
 							continue;
 						if ((partDesCount != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxJournalEnd) && (bibRefs[r].wordBlocks[lJopBlockIndex].getStartIndex() < maxJournalEnd))
 							continue;
@@ -1277,7 +1286,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 							if (DEBUG) System.out.println(" - giving up at block starting before " + Math.max(minJournalStart, minPublisherStart) + ": '" + bibRefs[r].wordBlocks[b].getValue() + "'");
 							break;
 						}
-						if ((bibRefs[r].bookContentHints.size() != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxPublisherEnd) && (bibRefs[r].wordBlocks[lJopBlockIndex].getStartIndex() < maxPublisherEnd))
+						if ((bibRefs[r].bookContentInfos.size() != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxPublisherEnd) && (bibRefs[r].wordBlocks[lJopBlockIndex].getStartIndex() < maxPublisherEnd))
 							continue;
 						if ((partDesCount != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxJournalEnd) && (bibRefs[r].wordBlocks[lJopBlockIndex].getStartIndex() < maxJournalEnd))
 							continue;
@@ -1344,7 +1353,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 					//		  + make sure not to span journal/publisher over volume number and pagination
 					//		  + if we have no journal/publisher at all (all candidate blocks after stray number mistaken for part designator), use part after
 					for (int b = 0; b < bibRefs[r].wordBlocks.length; b++) {
-						if ((bibRefs[r].bookContentHints.size() != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxPublisherEnd) && (bibRefs[r].wordBlocks[lJopBlockIndex].getStartIndex() < maxPublisherEnd))
+						if ((bibRefs[r].bookContentInfos.size() != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxPublisherEnd) && (bibRefs[r].wordBlocks[lJopBlockIndex].getStartIndex() < maxPublisherEnd))
 							continue;
 						if ((partDesCount != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxJournalEnd) && (bibRefs[r].wordBlocks[lJopBlockIndex].getStartIndex() < maxJournalEnd))
 							continue;
@@ -1418,7 +1427,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 						if (DEBUG) System.out.println(" - giving up at block starting before " + Math.max(minJournalStart, minPublisherStart) + ": '" + bibRefs[r].wordBlocks[b].getValue() + "'");
 						break;
 					}
-					if ((bibRefs[r].bookContentHints.size() != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxPublisherEnd) &&  (bibRefs[r].wordBlocks[lJopBlockIndex].getStartIndex() < maxPublisherEnd))
+					if ((bibRefs[r].bookContentInfos.size() != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxPublisherEnd) &&  (bibRefs[r].wordBlocks[lJopBlockIndex].getStartIndex() < maxPublisherEnd))
 						continue;
 					if ((partDesCount != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxJournalEnd) && (bibRefs[r].wordBlocks[lJopBlockIndex].getStartIndex() < maxJournalEnd))
 						continue;
@@ -1481,7 +1490,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 				//	rule: if journal/publisher can start in second block the earlies, we're done
 				//		  + make sure not to span journal/publisher over volume number and pagination
 				for (int b = firstVrBlockIndex; b <= lastVrBlockIndex; b++) {
-					if ((bibRefs[r].bookContentHints.size() != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxPublisherEnd))
+					if ((bibRefs[r].bookContentInfos.size() != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxPublisherEnd))
 						continue;
 					if ((partDesCount != 0) && (bibRefs[r].wordBlocks[b].getEndIndex() > maxJournalEnd))
 						continue;
@@ -2070,11 +2079,11 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 				bibRef.wordBlockExcluded[t] = true;
 				if (DEBUG) System.out.println(" - excluding token assigned as " + bibRef.structure.details[t] + " '" + bibRef.annotation.valueAt(t) + "'");
 			}
-		for (int h = 0; h < bibRef.bookContentHints.size(); h++) {
-			Annotation bch = ((Annotation) bibRef.bookContentHints.get(h));
-			for (int t = bch.getStartIndex(); t < bch.getEndIndex(); t++)
+		for (int i = 0; i < bibRef.bookContentInfos.size(); i++) {
+			Annotation bci = ((Annotation) bibRef.bookContentInfos.get(i));
+			for (int t = bci.getStartIndex(); t < bci.getEndIndex(); t++)
 				bibRef.wordBlockExcluded[t] = true;
-			if (DEBUG) System.out.println(" - excluding book content hint '" + bch.getValue() + "'");
+			if (DEBUG) System.out.println(" - excluding book content info '" + bci.getValue() + "'");
 		}
 		
 		//	get word blocks
@@ -2464,10 +2473,10 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 			//	- page numbers ("p." or "page" followed by a number)
 			bibRef.pageNumbers = new Annotation[0];
 			
-			//	- volumen/issue numbers ("no.", "vol.", etc. followed by a number)
+			//	- volume/issue numbers ("no.", "vol.", etc. followed by a number)
 			bibRef.partDesignators = bibRef.annotation.getAnnotations(PART_DESIGNATOR_ANNOTATION_TYPE);
 			
-			//	classify part desigantors
+			//	classify part designators
 			this.classifyPartDesignators(bibRef);
 			
 			//	... and we're done here
@@ -2489,11 +2498,11 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		//	- page numbers ("p." or "page" followed by a number)
 		bibRef.pageNumbers = (VOLUME_REFERENCE_ANNOTATION_TYPE.equals(bibRef.annotation.getType()) ? new Annotation[0] : this.getPageNumbers(bibRef));
 		
-		//	- volumen/issue numbers ("no.", "vol.", etc. followed by a number)
+		//	- volume/issue numbers ("no.", "vol.", etc. followed by a number)
 		bibRef.partDesignators = this.getPartDesignators(bibRef);
 		
-		//	forget about page numbers and part designators if there are book content hints and no page ranges (if page range present along with part designators, we have a rare mixture ...)
-		if ((bibRef.bookContentHints.size() != 0) && (bibRef.pageRanges.length == 0)) {
+		//	forget about page numbers and part designators if there are book content infos and no page ranges (if page range present along with part designators, we have a rare mixture ...)
+		if ((bibRef.bookContentInfos.size() != 0) && (bibRef.pageRanges.length == 0)) {
 			bibRef.pageNumbers = new Annotation[0];
 			bibRef.partDesignators = new Annotation[0];
 		}
@@ -2641,7 +2650,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 				break;
 			}
 			
-			//	add all possibe blocks within current maximum block
+			//	add all possible blocks within current maximum block
 			for (int s = pdbStart; s <= pdbEnd; s++) {
 				if ((partDesignators[s].size() > 1) || Gamta.isNumber(partDesignators[s].firstValue())) // ignore single Roman numbers (all too frequent in the middle of old book titles)
 					partDesignatorBlocks.add(partDesignators[s]);
@@ -2653,7 +2662,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 			pdbStart = pdbEnd;
 		}
 		
-		//	include preceeding and following brackets if respective matching bracket included in block
+		//	include preceding and following brackets if respective matching bracket included in block
 		for (int p = 0; p < partDesignatorBlocks.size(); p++) {
 			Annotation partDesignatorBlock = ((Annotation) partDesignatorBlocks.get(p));
 			if (partDesignatorBlock.size() == 1)
@@ -2955,8 +2964,11 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 			bibRef.structure = new Structure(bibRef.annotation, dummyWorkingStructure);
 		}
 		
-		if (DEBUG) System.out.println(" =plain=> (" + maxScore + ") " + bibRef.structure.punctSummaryString);
-		if (DEBUG) System.out.println(" =fuzzy=> (" + maxFuzzyScore + ") " + maxFuzzyScoreStructure.punctSummaryString);
+		if (DEBUG) {
+			System.out.println(" =plain=> (" + maxScore + ") " + ((maxScoreStructure == null) ? "not found" : maxScoreStructure.punctSummaryString));
+			System.out.println(" =fuzzy=> (" + maxFuzzyScore + ") " + ((maxFuzzyScoreStructure == null) ? "not found" : maxFuzzyScoreStructure.punctSummaryString));
+			System.out.println("   ==> (" + maxFuzzyScore + ") " + bibRef.structure.punctSummaryString);
+		}
 		
 		//	count frequencies of separator chars
 		for (int s = 1; s < (bibRef.structure.punctSummary.length - 1); s++)
@@ -3463,12 +3475,22 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 			bibRef.annotation.addAnnotation(PUBLICATION_DOI_ANNOTATION_TYPE, bibRef.dois[d].getStartIndex(), bibRef.dois[d].size());
 		}
 		
-		//	 ... and URLs
+		//	 ... and URLs ...
 		for (int u = 0; u < bibRef.urls.length; u++) {
 			if (DEBUG) System.out.println("URL: " + bibRef.urls[u].toXML());
 			bibRef.annotation.addAnnotation(PUBLICATION_URL_ANNOTATION_TYPE, bibRef.urls[u].getStartIndex(), bibRef.urls[u].size());
 		}
 		
+		//	... and book content info
+		for (int i = 0; i < bibRef.bookContentInfos.size(); i++) {
+			Annotation bci = ((Annotation) bibRef.bookContentInfos.get(i));
+			if (DEBUG) System.out.println("Book Content Info: " + bci.toXML());
+			bibRef.annotation.addAnnotation(BOOK_CONTENT_INFO_ANNOTATION_TYPE, bci.getStartIndex(), bci.size());
+		}
+		
+		//	filter URLs that are also DOIs
+		AnnotationFilter.removeContained(bibRef.annotation, PUBLICATION_DOI_ANNOTATION_TYPE, PUBLICATION_URL_ANNOTATION_TYPE);
+		AnnotationFilter.removeContaining(bibRef.annotation, PUBLICATION_URL_ANNOTATION_TYPE, PUBLICATION_DOI_ANNOTATION_TYPE);
 		
 		//	print data
 		if (DEBUG) {
@@ -3523,11 +3545,11 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		if (DEBUG) System.out.println(" - part designator " + (gotPartDesignator ? "" : "not ") + "given");
 		
 		//	check book content hints
-		boolean gotBookContentHint = (bibRef.bookContentHints.size() != 0);
-		if (DEBUG) System.out.println(" - book content hint " + (gotBookContentHint ? "" : "not ") + "given");
+		boolean gotBookContentInfos = (bibRef.bookContentInfos.size() != 0);
+		if (DEBUG) System.out.println(" - book content info " + (gotBookContentInfos ? "" : "not ") + "given");
 		
 		//	clearly a book
-		if (gotBookContentHint) {
+		if (gotBookContentInfos) {
 			if (DEBUG) System.out.println(" --> using book content hint");
 			typeName = (gotPagination ? BOOK_CHAPTER_REFERENCE_TYPE : BOOK_REFERENCE_TYPE);
 		}
@@ -3671,7 +3693,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		BibRef volumeRef;
 		Annotation volumeReference;
 		
-		ArrayList bookContentHints = new ArrayList();
+		ArrayList bookContentInfos = new ArrayList();
 		HashSet titleNumberTokens = new HashSet();
 		BibRefType type;
 		
@@ -3682,12 +3704,14 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		BibRef(MutableAnnotation annot) {
 			this.annotation = annot;
 			
+			int preExistingStructureScore = 0;
 			if (this.annotation.getAnnotations(AUTHOR_ANNOTATION_TYPE).length != 0)
-				this.preExistingStructure = true;
+				preExistingStructureScore++;
 			if (this.annotation.getAnnotations(TITLE_ANNOTATION_TYPE).length != 0)
-				this.preExistingStructure = true;
+				preExistingStructureScore++;
 			if (this.annotation.getAnnotations(YEAR_ANNOTATION_TYPE).length != 0)
-				this.preExistingStructure = true;
+				preExistingStructureScore++;
+			this.preExistingStructure = (preExistingStructureScore >= 2);
 		}
 	}
 	
@@ -4943,11 +4967,11 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 			if (invalidatorTailing == null)
 				pageNumbers.add(pageNumberAnnots[n]);
 			
-			//	remember hint to referenced publication being a book
+			//	remember info to referenced publication being a book
 			else if (this.bookContentHintNumberingInvalidatorsTailing.containsIgnoreCase(invalidatorTailing.getValue())) {
 				if (DEBUG) System.out.println("Found book content hint: " + pageNumberAnnots[n] + " " + invalidatorTailing);
 //				bibRef.gotBookContentHint = true;
-				bibRef.bookContentHints.add(Gamta.newAnnotation(bibRef.annotation, null, pageNumberAnnots[n].getStartIndex(), (invalidatorTailing.getEndIndex() - pageNumberAnnots[n].getStartIndex())));
+				bibRef.bookContentInfos.add(Gamta.newAnnotation(bibRef.annotation, BOOK_CONTENT_INFO_ANNOTATION_TYPE, pageNumberAnnots[n].getStartIndex(), (invalidatorTailing.getEndIndex() - pageNumberAnnots[n].getStartIndex())));
 			}
 		}
 		
@@ -5187,7 +5211,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 				//	remember hint to referenced publication being a book
 				if (this.bookContentHintNumberingInvalidatorsTailing.containsIgnoreCase(invalidatorTailing.getValue())) {
 					if (DEBUG) System.out.println("Found book content hint: " + partDesignatorAnnots[p] + " " + invalidatorTailing);
-					bibRef.bookContentHints.add(Gamta.newAnnotation(bibRef.annotation, null, partDesignatorAnnots[p].getStartIndex(), (invalidatorTailing.getEndIndex() - partDesignatorAnnots[p].getStartIndex())));
+					bibRef.bookContentInfos.add(Gamta.newAnnotation(bibRef.annotation, BOOK_CONTENT_INFO_ANNOTATION_TYPE, partDesignatorAnnots[p].getStartIndex(), (invalidatorTailing.getEndIndex() - partDesignatorAnnots[p].getStartIndex())));
 				}
 				continue;
 			}
@@ -5537,8 +5561,6 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		for (int r = 0; r < bibRefs.length; r++)
 			brpfps[r] = this.getFeedbackPanel(bibRefs[r], data.getDocumentProperty(DOCUMENT_ID_ATTRIBUTE), bibRefParagraphIDs, allowRemove, allowSplit);
 		
-		//	TODO observe flagging
-		
 		//	can we issue all dialogs at once?
 		if (FeedbackPanel.isMultiFeedbackEnabled()) {
 			FeedbackPanel.getMultiFeedback(brpfps);
@@ -5569,10 +5591,6 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 				f = "Cancel";
 			
 			brpfps[d].setTitle(aefpTitle);
-			
-			//	observe flagging
-			if (brpfps[d].getProperty(FeedbackPanel.FLAG_PROPERTY_NAME) != null)
-				bibRefs[d].setAttribute(("_" + FeedbackPanel.FLAG_PROPERTY_NAME), brpfps[d].getProperty(FeedbackPanel.FLAG_PROPERTY_NAME));
 			
 			//	current dialog submitted, process data
 			if (f.startsWith("OK")) {
