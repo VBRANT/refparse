@@ -400,7 +400,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 	
 	private static final String urlChar = "[a-zA-Z0-9\\-\\_\\!\\~\\*\\'\\(\\)]";
 	private static final String urlPattern = 
-			"http\\:\\/\\/" +
+			"(https|http|ftp)\\:\\/\\/" +
 			"" + urlChar + "+(\\." + urlChar + "+)+(:[0-9]++)?" +
 			"(\\/" + urlChar + "+(\\." + urlChar + "+)*)*" +
 			"(\\?.*)?";
