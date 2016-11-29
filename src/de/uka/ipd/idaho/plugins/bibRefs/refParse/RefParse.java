@@ -82,6 +82,47 @@ import de.uka.ipd.idaho.stringUtils.regExUtils.RegExUtils;
  */
 public abstract class RefParse extends AbstractConfigurableAnalyzer implements BibRefConstants {
 	
+	/* TODO Use Style Templates in RefParse (and reference handling in general)
+- author list style:
+  - LF: "<lastName>',' <firstName>"
+  - LI: "<lastName>','? <Initials>"
+  - FL: "<firstName> <lastName>"
+  - IL: "<Initials> <lastName>"
+  - LF+FL: changing name part order
+  - LI+IL: dito
+- build author names from atoms and expansively using annotation patterns (like authority names in TreeFAT)
+==> allows for injecting known last names even if they don't match patterns ("Ng" !!!) by means of annotating before calling RefParse
+- author list separator(s)
+- author names in all-caps?
+
+- title/journal separator
+- are journal/publisher names in italics?
+- publisher part order:
+  - LN: "<location> ':'? <name>"
+  - NL: "<name> ',' <location>"
+
+- reference numbering scheme (also for reference tagging):
+  - "N": last name of first author
+  - "P": parentheses
+  - "Q": square brackets
+  - "E": enumeration "<number> '.'?"
+==> allow index letters in years only if style is "N"
+
+- expect use of author repetition markers?
+
+- reference start style:
+  - outdented
+  - indented
+  - neither
+==> even allows for correcting paragraph boundaries below "References" heading
+
+
+- also observe numbering scheme in reference detection
+
+
+- also observe numbering scheme in reference citation tagger (even though it should usually infer pretty safely)
+	 */
+	
 	private static final String VOLUME_DESIGNATOR_TYPE = VOLUME_DESIGNATOR_ANNOTATION_TYPE;
 	private static final String ISSUE_DESIGNATOR_TYPE = ISSUE_DESIGNATOR_ANNOTATION_TYPE;
 	private static final String NUMBER_DESIGNATOR_TYPE = NUMERO_DESIGNATOR_ANNOTATION_TYPE;
@@ -1045,7 +1086,9 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		}
 		
 		//	classify word blocks as title, volume title, and journal/publisher
-		for (int r = 0; r < bibRefs.length; r++) {
+//		for (int r = 0; r < bibRefs.length; r++) {
+		for (int rt = 0; rt < bibRefs.length; rt++) {
+			final int r = rt;
 			if (bibRefs[r].preExistingStructure)
 				continue;
 			if (bibRefs[r].wordBlocks.length == 0)
@@ -1237,7 +1280,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 			//	set up classification
 			String[] wordBlockMeanings = new String[bibRefs[r].wordBlocks.length];
 			Arrays.fill(wordBlockMeanings, null);
-			if (DEBUG) System.out.println("Classifying word blocks");
+			if (DEBUG) System.out.println("Classifying word blocks in " + bibRefs[r].annotation);
 			
 			//	no volume reference
 			if (bibRefs[r].volumeRef == null) {
@@ -1443,8 +1486,10 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 				//	if we have a primary separator, use it
 				boolean gotSeparatorStart = false;
 				if (tJopSeparatorTokens != null) {
-					if (DEBUG) System.out.println(" - seeking backward for JoP with T-JoP separator");
+					if (DEBUG) System.out.println(" - seeking backward for JoP with T-JoP separator '" + tJopSeparator + "'");
 					for (int b = lJopBlockIndex; b >= (firstVrBlockIndex+1); b--) {
+						if (b >= bibRefs[r].wordBlocks.length)
+							continue; // we need this catch here in case separator doesn't occur at all and bounds reach beyond array size
 						if ((b != lJopBlockIndex) && !canMergeWithSuccessor[b]) {
 							if (DEBUG) System.out.println(" - giving up at unattachable block: '" + bibRefs[r].wordBlocks[b].getValue() + "'");
 							break;
