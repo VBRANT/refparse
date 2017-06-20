@@ -146,7 +146,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 	
 	private static final boolean DEBUG_STRUCTURE_SCORING = (DEBUG && true);
 	
-	private static final boolean DEBUG_AUTHOR_NAME_EXTRACTION = (DEBUG && true);
+	private static final boolean DEBUG_AUTHOR_NAME_EXTRACTION = (DEBUG && false);
 	private static final boolean DEBUG_AUTHOR_LIST_ASSEMBLY = (DEBUG && false);
 	
 	
@@ -2166,7 +2166,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 			if (wordBlockStart != -1)
 				wordBlocks.add(Gamta.newAnnotation(bibRef.annotation, null, wordBlockStart, (bibRef.annotation.size()-wordBlockStart)));
 			
-			//	sort out blocks consisting of punctuation marks only, and individual lober case letters
+			//	sort out blocks consisting of punctuation marks only, and individual lower case letters
 			for (int w = 0; w < wordBlocks.size(); w++) {
 				Annotation wb = ((Annotation) wordBlocks.get(w));
 				boolean punctuationOnly = true;
@@ -2177,8 +2177,32 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 						break;
 					}
 				}
-				if (punctuationOnly)
+				if (punctuationOnly) {
+					if (DEBUG)
+						System.out.println(" - removing punctuation-only word block '" + wb.getValue() + "'");
 					wordBlocks.remove(w--);
+				}
+			}
+			
+			//	truncate leading single Latin lower case letter if preceded by year and followed by capitalized word
+			for (int w = 0; w < wordBlocks.size(); w++) {
+				Annotation wb = ((Annotation) wordBlocks.get(w));
+				if (wb.size() < 2)
+					continue;
+				if (wb.getStartIndex() < 1)
+					continue;
+				if (!wb.firstValue().matches("[a-z]"))
+					continue;
+				if (!wb.valueAt(1).matches("[A-Z].*"))
+					continue;
+				if (!bibRef.annotation.valueAt(wb.getStartIndex()-1).matches("[12][0-9]{3}"))
+					continue;
+				if (DEBUG)
+					System.out.println(" - truncating index letter off word block '" + wb.getValue() + "'");
+				wb = Gamta.newAnnotation(bibRef.annotation, null, (wb.getStartIndex() + 1), (wb.size() - 1));
+				wordBlocks.set(w, wb);
+				if (DEBUG)
+					System.out.println("   --> '" + wb.getValue() + "'");
 			}
 			
 			//	sort out blocks covered by others
@@ -3905,8 +3929,8 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 			firstNames = ((Annotation[]) authorNamePartList.toArray(new Annotation[authorNamePartList.size()]));
 		authorNamePartList.clear();
 		
-		//	blocks of initials
-		Annotation[] initials = Gamta.extractAllMatches(bibRef, this.authorInitialsRegEx, false);
+		//	blocks of initials (need to allow sub-matches here, as otherwise all-caps last names end up conflated with initials)
+		Annotation[] initials = Gamta.extractAllMatches(bibRef, this.authorInitialsRegEx, true);
 		if (DEBUG_AUTHOR_NAME_EXTRACTION) {
 			System.out.println("  - initial blocks:");
 			for (int i = 0; i < initials.length; i++)
@@ -4191,7 +4215,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 				if (!al.bridged.containsAll(cal.bridged))
 					continue;
 				if (DEBUG_AUTHOR_LIST_ASSEMBLY) {
-					System.out.println(" - removig " + al.annotation);
+					System.out.println(" - removing " + al.annotation);
 					System.out.println("    - names: " + al.authorNames);
 					System.out.println("    - bridged: " + al.bridged);
 					System.out.println("    - name part orders: " + al.namePartOrders);
@@ -4284,6 +4308,13 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 	}
 	
 	private boolean buildAuthorLists(BibRef bibRef, boolean[] isNobleTitleToken, LinkedList currentAuthorList, int currentAuthorListEnd, String currentNamePartOrder, String currentFirstNameStyle, HashSet attachedAuthorNameIDs, HashSet invokerSubAttachedAuthorNameIDs, ArrayList authorLists) {
+		
+		//	TODO use annotation patterns here
+		
+		//	TODO tag all them list separators
+		
+		//	TODO use any possible author list (make sure to observe '...' and '. . . ' emphases)
+		
 		boolean stored = false;
 		boolean storedPrefix = false;
 		HashSet ownSubAttachedAuthorNameIDs = new HashSet();
@@ -5157,7 +5188,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		for (int p = 0; p < this.titleNumberPatterns.size(); p++) {
 			Annotation[] titleNumberAnnots = Gamta.extractAllMatches(bibRef.annotation, this.titleNumberPatterns.get(p), false);
 			for (int t = 0; t < titleNumberAnnots.length; t++) {
-				if (DEBUG) System.out.println("Got title number: " + titleNumberAnnots[t].getValue());
+				if (DEBUG) System.out.println("Got title number [ " + this.titleNumberPatterns.get(p) + " ]: " + titleNumberAnnots[t].getValue());
 				for (int i = titleNumberAnnots[t].getStartIndex(); i < titleNumberAnnots[t].getEndIndex(); i++)
 					bibRef.titleNumberTokens.add(new Integer(i));
 			}
