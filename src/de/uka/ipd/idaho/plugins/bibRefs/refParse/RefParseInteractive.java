@@ -21,6 +21,8 @@ import java.util.Properties;
 
 import de.uka.ipd.idaho.gamta.MutableAnnotation;
 import de.uka.ipd.idaho.gamta.util.AnnotationFilter;
+import de.uka.ipd.idaho.gamta.util.ProgressMonitor;
+import de.uka.ipd.idaho.gamta.util.ProgressMonitor.CascadingProgressMonitor;
 import de.uka.ipd.idaho.plugins.bibRefs.refParse.RefParse.AuthorListStyle;
 
 /**
@@ -30,26 +32,32 @@ import de.uka.ipd.idaho.plugins.bibRefs.refParse.RefParse.AuthorListStyle;
 public class RefParseInteractive extends RefParseAnalyzer {
 	
 	/* (non-Javadoc)
-	 * @see de.uka.ipd.idaho.plugins.bibliographicReferences.RefParseAnalyzer#processBibRefs(de.uka.ipd.idaho.gamta.MutableAnnotation, de.uka.ipd.idaho.gamta.MutableAnnotation[], java.util.Properties)
+	 * @see de.uka.ipd.idaho.plugins.bibRefs.refParse.RefParseAnalyzer#processBibRefs(de.uka.ipd.idaho.gamta.MutableAnnotation, de.uka.ipd.idaho.gamta.MutableAnnotation[], java.util.Properties, de.uka.ipd.idaho.gamta.util.ProgressMonitor)
 	 */
-	protected void processBibRefs(MutableAnnotation data, MutableAnnotation[] bibRefs, Properties parameters) {
-		this.processBibRefs(data, bibRefs, parameters, null, false);
+	protected void processBibRefs(MutableAnnotation data, MutableAnnotation[] bibRefs, Properties parameters, ProgressMonitor pm) {
+		this.processBibRefs(data, bibRefs, parameters, null, false, pm);
 	}
-	private void processBibRefs(MutableAnnotation data, MutableAnnotation[] bibRefs, Properties parameters, AuthorListStyle als, boolean isRecursiveCall) {
+	private void processBibRefs(MutableAnnotation data, MutableAnnotation[] bibRefs, Properties parameters, AuthorListStyle als, boolean isRecursiveCall, ProgressMonitor pm) {
 		
 		//	parse references
-		als = this.refParse.parseBibRefs(data, bibRefs, parameters, als);
+		pm.setStep("Parsing references");
+		pm.setBaseProgress(0);
+		pm.setMaxProgress(80);
+		als = this.refParse.parseBibRefs(data, bibRefs, parameters, als, new CascadingProgressMonitor(pm));
 		
 		//	cannot get feedback, we're done here
 		if (!parameters.containsKey(INTERACTIVE_PARAMETER))
 			return;
 		
 		//	get feedback
-		MutableAnnotation[] splitBibRefs = this.refParse.getFeedback(data, bibRefs, true, true);
+		pm.setStep("Getting feedback");
+		pm.setBaseProgress(80);
+		pm.setMaxProgress(90);
+		MutableAnnotation[] splitBibRefs = this.refParse.getFeedback(data, bibRefs, true, true, pm);
 		
 		//	recurse with split references (if any)
 		if (splitBibRefs != null)
-			this.processBibRefs(data, splitBibRefs, parameters, als, true);
+			this.processBibRefs(data, splitBibRefs, parameters, als, true, pm);
 		
 		//	we are in a recursive call, so we're done
 		if (isRecursiveCall)
@@ -59,10 +67,16 @@ public class RefParseInteractive extends RefParseAnalyzer {
 		bibRefs = data.getMutableAnnotations(BIBLIOGRAPHIC_REFERENCE_TYPE);
 		
 		//	truncate leading and tailing punctuation from detail annotations
-		this.refParse.trimPunctuation(bibRefs);
+		pm.setStep("Trimming detail punctuation");
+		pm.setBaseProgress(90);
+		pm.setMaxProgress(95);
+		this.refParse.trimPunctuation(bibRefs, pm);
 		
 		//	add detail attributes (and learn along the way)
-		this.refParse.setDetailAttributes(bibRefs);
+		pm.setStep("Setting detail attributes");
+		pm.setBaseProgress(95);
+		pm.setMaxProgress(100);
+		this.refParse.setDetailAttributes(bibRefs, pm);
 		
 		//	clean up feedback control attribute
 		AnnotationFilter.removeAnnotationAttribute(data, BIBLIOGRAPHIC_REFERENCE_TYPE, RefParse.GOT_FEEDBACK_ATTRIBUTE);

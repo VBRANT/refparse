@@ -23,6 +23,8 @@ import javax.swing.JDialog;
 
 import de.uka.ipd.idaho.gamta.MutableAnnotation;
 import de.uka.ipd.idaho.gamta.util.AbstractConfigurableAnalyzer;
+import de.uka.ipd.idaho.gamta.util.MonitorableAnalyzer;
+import de.uka.ipd.idaho.gamta.util.ProgressMonitor;
 import de.uka.ipd.idaho.gamta.util.analyzerConfiguration.AnalyzerConfigPanel;
 import de.uka.ipd.idaho.plugins.bibRefs.BibRefConstants;
 
@@ -30,7 +32,7 @@ import de.uka.ipd.idaho.plugins.bibRefs.BibRefConstants;
  * @author sautter
  *
  */
-public abstract class RefParseAnalyzer extends AbstractConfigurableAnalyzer implements BibRefConstants {
+public abstract class RefParseAnalyzer extends AbstractConfigurableAnalyzer implements BibRefConstants, MonitorableAnalyzer {
 	protected RefParse refParse;
 	
 	/* (non-Javadoc)
@@ -51,18 +53,25 @@ public abstract class RefParseAnalyzer extends AbstractConfigurableAnalyzer impl
 	 * @see de.uka.ipd.idaho.gamta.util.Analyzer#process(de.uka.ipd.idaho.gamta.MutableAnnotation, java.util.Properties)
 	 */
 	public void process(MutableAnnotation data, Properties parameters) {
+		this.process(data, parameters, ProgressMonitor.dummy);
+	}
+	
+	/* (non-Javadoc)
+	 * @see de.uka.ipd.idaho.gamta.util.MonitorableAnalyzer#process(de.uka.ipd.idaho.gamta.MutableAnnotation, java.util.Properties, de.uka.ipd.idaho.gamta.util.ProgressMonitor)
+	 */
+	public void process(MutableAnnotation data, Properties parameters, ProgressMonitor pm) {
 		
 		//	get bibliographic references
 		MutableAnnotation[] bibRefs = data.getMutableAnnotations(BIBLIOGRAPHIC_REFERENCE_TYPE);
 		
 		//	do actual parsing
-		this.processBibRefs(data, bibRefs, parameters);
+		this.processBibRefs(data, bibRefs, parameters, pm);
 		
 		//	clean up duplicate annotations
 		this.refParse.removeDuplicateDetails(data);
 	}
 	
-	protected abstract void processBibRefs(MutableAnnotation data, MutableAnnotation[] bibRefAnnots, Properties parameters);
+	protected abstract void processBibRefs(MutableAnnotation data, MutableAnnotation[] bibRefs, Properties parameters, ProgressMonitor pm);
 	
 	/* (non-Javadoc)
 	 * @see de.uka.ipd.idaho.gamta.util.AbstractConfigurableAnalyzer#configureProcessor()

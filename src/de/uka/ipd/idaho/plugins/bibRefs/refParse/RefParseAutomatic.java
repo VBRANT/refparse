@@ -20,6 +20,7 @@ package de.uka.ipd.idaho.plugins.bibRefs.refParse;
 import java.util.Properties;
 
 import de.uka.ipd.idaho.gamta.MutableAnnotation;
+import de.uka.ipd.idaho.gamta.util.ProgressMonitor;
 
 /**
  * @author sautter
@@ -28,9 +29,9 @@ import de.uka.ipd.idaho.gamta.MutableAnnotation;
 public class RefParseAutomatic extends RefParseAnalyzer {
 	
 	/* (non-Javadoc)
-	 * @see de.uka.ipd.idaho.plugins.bibliographicReferences.RefParseAnalyzer#processBibRefs(de.uka.ipd.idaho.gamta.MutableAnnotation, de.uka.ipd.idaho.gamta.MutableAnnotation[], java.util.Properties)
+	 * @see de.uka.ipd.idaho.plugins.bibRefs.refParse.RefParseAnalyzer#processBibRefs(de.uka.ipd.idaho.gamta.MutableAnnotation, de.uka.ipd.idaho.gamta.MutableAnnotation[], java.util.Properties, de.uka.ipd.idaho.gamta.util.ProgressMonitor)
 	 */
-	protected void processBibRefs(MutableAnnotation data, MutableAnnotation[] bibRefAnnots, Properties parameters) {
-		this.refParse.parseBibRefs(data, bibRefAnnots, parameters, null);
+	protected void processBibRefs(MutableAnnotation data, MutableAnnotation[] bibRefs, Properties parameters, ProgressMonitor pm) {
+		this.refParse.parseBibRefs(data, bibRefs, parameters, null, pm);
 	}
 }

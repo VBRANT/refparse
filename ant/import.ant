@@ -5,7 +5,7 @@
 -->
 
 <project name="import">
-	<target name="fetch" depends="fetch-su,fetch-hxu,fetch-gamta,fetch-eio,fetch-icmlib,fetch-img,fetch-fb,fetch-bru" />
+	<target name="fetch" depends="fetch-su,fetch-hxu,fetch-gamta,fetch-eio,fetch-icmlib,fetch-img,fetch-fb,fetch-bru,fetch-pnu,fetch-dtu" />
 	
 	<target name="check-fetch-su" unless="su.exists">
 		<available property="su.exists" file="../idaho-core/dist/StringUtils.jar"/>
@@ -50,6 +50,12 @@
 	</target>
 	<target name="fetch-fb" depends="check-fetch-ext" if="${ext.exists}">
     	<copy file="../idaho-extensions/dist/GamtaFeedbackAPI.jar" todir="${lib.home}" overwrite="true" verbose="false" />
+	</target>
+	<target name="fetch-pnu" depends="check-fetch-ext" if="${ext.exists}">
+    	<copy file="../idaho-extensions/dist/ProperNameUtils.jar" todir="${lib.home}" overwrite="true" verbose="false" />
+	</target>
+	<target name="fetch-dtu" depends="check-fetch-ext" if="${ext.exists}">
+    	<copy file="../idaho-extensions/dist/DateTimeUtils.jar" todir="${lib.home}" overwrite="true" verbose="false" />
 	</target>
 	<target name="fetch-bru" depends="check-fetch-ext" if="${ext.exists}">
     	<copy file="../idaho-extensions/dist/BibRefUtils.jar" todir="${lib.home}" overwrite="true" verbose="false" />

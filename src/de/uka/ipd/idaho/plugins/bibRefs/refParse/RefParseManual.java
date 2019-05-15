@@ -21,6 +21,7 @@ import java.util.Properties;
 
 import de.uka.ipd.idaho.gamta.MutableAnnotation;
 import de.uka.ipd.idaho.gamta.util.AnnotationFilter;
+import de.uka.ipd.idaho.gamta.util.ProgressMonitor;
 
 /**
  * @author sautter
@@ -29,18 +30,27 @@ import de.uka.ipd.idaho.gamta.util.AnnotationFilter;
 public class RefParseManual extends RefParseAnalyzer {
 	
 	/* (non-Javadoc)
-	 * @see de.uka.ipd.idaho.plugins.bibliographicReferences.RefParseAnalyzer#processBibRefs(de.uka.ipd.idaho.gamta.MutableAnnotation, de.uka.ipd.idaho.gamta.MutableAnnotation[], java.util.Properties, java.util.Properties, boolean, de.uka.ipd.idaho.plugins.bibliographicReferences.RefParse.AuthorListStyle)
+	 * @see de.uka.ipd.idaho.plugins.bibRefs.refParse.RefParseAnalyzer#processBibRefs(de.uka.ipd.idaho.gamta.MutableAnnotation, de.uka.ipd.idaho.gamta.MutableAnnotation[], java.util.Properties, de.uka.ipd.idaho.gamta.util.ProgressMonitor)
 	 */
-	protected void processBibRefs(MutableAnnotation data, MutableAnnotation[] bibRefs, Properties parameters) {
+	protected void processBibRefs(MutableAnnotation data, MutableAnnotation[] bibRefs, Properties parameters, ProgressMonitor pm) {
 		
 		//	simply open feedback dialogs
-		this.refParse.getFeedback(data, bibRefs, false, false);
+		pm.setStep("Getting feedback");
+		pm.setBaseProgress(0);
+		pm.setMaxProgress(90);
+		this.refParse.getFeedback(data, bibRefs, false, false, pm);
 		
 		//	truncate leading and tailing punctuation from detail annotations
-		this.refParse.trimPunctuation(bibRefs);
+		pm.setStep("Trimming detail punctuation");
+		pm.setBaseProgress(90);
+		pm.setMaxProgress(95);
+		this.refParse.trimPunctuation(bibRefs, pm);
 		
 		//	add detail attributes
-		this.refParse.setDetailAttributes(bibRefs);
+		pm.setStep("Setting detail attributes");
+		pm.setBaseProgress(95);
+		pm.setMaxProgress(100);
+		this.refParse.setDetailAttributes(bibRefs, pm);
 		
 		//	clean up feedback control attribute
 		AnnotationFilter.removeAnnotationAttribute(data, BIBLIOGRAPHIC_REFERENCE_TYPE, RefParse.GOT_FEEDBACK_ATTRIBUTE);
