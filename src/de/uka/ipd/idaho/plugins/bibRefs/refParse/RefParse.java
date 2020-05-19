@@ -531,21 +531,6 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		this.knownAuthorLastNames.addContentIgnoreDuplicates(this.readList("knownAuthorLastNames"));
 		
 		//	read base regular expression patterns and assemble main patterns
-//		this.authorLastNameBaseRegEx = this.readRegEx("authorLastNameBase", this.authorLastNameBaseRegEx);
-//		this.authorLastNameRegEx = "(" + this.authorLastNameBaseRegEx + ")((\\-|\\s)?" + this.authorLastNameBaseRegEx + ")*";
-//		this.authorLastNameAllCapsBaseRegEx = this.readRegEx("authorLastNameAllCapsBase", this.authorLastNameAllCapsBaseRegEx);
-//		this.authorLastNameAllCapsRegEx = "(" + this.authorLastNameAllCapsBaseRegEx + ")((\\-|\\s)?" + this.authorLastNameAllCapsBaseRegEx + ")*";
-//		
-//		this.authorFirstNameBaseRegEx = this.readRegEx("authorFirstNameBase", this.authorFirstNameBaseRegEx);
-//		this.authorFirstNameRegEx = "(" + this.authorFirstNameBaseRegEx + ")((\\-|\\s)?" + this.authorFirstNameBaseRegEx + ")*";
-//		this.authorFirstNameAllCapsBaseRegEx = this.readRegEx("authorFirstNameAllCapsBase", this.authorFirstNameAllCapsBaseRegEx);
-//		this.authorFirstNameAllCapsRegEx = "(" + this.authorFirstNameAllCapsBaseRegEx + ")((\\-|\\s)?" + this.authorFirstNameAllCapsBaseRegEx + ")*";
-//		
-//		this.authorInitialsBaseRegEx = this.readRegEx("authorInitialsBase", this.authorInitialsBaseRegEx);
-//		this.authorInitialsRegEx = "(" + this.authorInitialsBaseRegEx + ")(((\\s?\\-\\s?)|\\s)?" + this.authorInitialsBaseRegEx + ")*";
-//		
-//		this.authorNameAffixRegEx = this.readRegEx("authorNameAffix", this.authorNameAffixRegEx);
-		
 		this.nobleTitleNameRegEx = this.readRegEx("nobleTitleName", this.nobleTitleNameRegEx);
 		this.nobleTitleStarts.addContentIgnoreDuplicates(this.readList("nobleTitleStarts"));
 		
@@ -696,7 +681,6 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		//	add transferable types TODO check out if transfer is sensible (causes errors if element not given in subsequent references)
 		this.transferableTypes.addElementIgnoreDuplicates(AUTHOR_ANNOTATION_TYPE);
 		this.transferableTypes.addElementIgnoreDuplicates(YEAR_ANNOTATION_TYPE);
-		this.transferableTypes.addElementIgnoreDuplicates(JOURNAL_NAME_OR_PUBLISHER_ANNOTATION_TYPE);
 		
 		//	add available reference types TODO load descriptors of reference types from BibRefTypeSystem
 		this.referenceTypes.clear();
@@ -709,11 +693,6 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		this.referenceTypes.put(URL_REFERENCE_TYPE, new BibRefType(URL_REFERENCE_TYPE, "Online Document / Website / etc."));
 		
 		this.referenceTypeSystem = BibRefTypeSystem.getInstance(this.dataProvider, "RefClassifierTypeSystem.xml", false);
-//		BibRefTypeSystem.BibRefType[] brts = this.referenceTypeSystem.getBibRefTypes();
-//		for (int t = 0; t < brts.length; t++) {
-//			if (!brts[t].name.startsWith("book"))
-//				brts[t].addCondition(GPathParser.parseExpression("./@bookContentInfo"), "Only books have content hints.");
-//		}
 		
 		//	load learned authors
 		try {
@@ -773,7 +752,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 			pgd.setLabel("Bibliographic References in General");
 			pgd.setDescription("Parameters describing the layout and styling of individual references in the bibliography of a document.");
 			pgd.setParamLabel("numberingPattern", "Reference Numbering Pattern");
-			pgd.setParamDescription("numberingPattern", "A pattern matching the numbering of references; only applicable if such a reference style is in use in documents described by a given style.");
+			pgd.setParamDescription("numberingPattern", "A pattern matching the numbering of references; only applicable if such a reference style is in use in documents described by a given style, set to 'NONE' to explicitly indicate non-numbered references.");
 			DocumentStyle.addParameterGroupDescription(pgd);
 		}
 	}
@@ -846,7 +825,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		} catch (IOException fnfe) {}
 	}
 	
-	//	TODO use Analyzer Config API for egular expression patterns, with fixed names, forbidding to delete any of the built-in patterns
+	//	TODO use Analyzer Config API for regular expression patterns, with fixed names, forbidding to delete any of the built-in patterns
 	
 	/* (non-Javadoc)
 	 * @see de.uka.ipd.idaho.gamta.util.AbstractConfigurableAnalyzer#getConfigTitle()
@@ -1106,8 +1085,6 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			authorListStyle = this.getAuthorListStyle(bibRefs);
 		this.filterAuthorLists(bibRefs, authorListStyle, nameStyle.getNameStopWords(), pm);
 		System.out.println("TIME: Author lists filtered after " + (System.currentTimeMillis() - start) + "ms");
-//		if (true)
-//			throw new RuntimeException("ENOUGH");
 		
 		//	extract all possible detail structures (as "<element> <punctuation>? <element> <punctuation>? <element> ...") and use the one which fits for most references
 		pm.setStep("Collecting reference structures");
@@ -2080,6 +2057,14 @@ Observe in the long haul if any of these rules does more harm than good !!!
 				Annotation wb = ((Annotation) wordBlocks.get(w));
 				if ((wb.size() == 1) && Gamta.isNumber(wb.firstValue()))
 					wordBlocks.remove(w--);
+			}
+			
+			//	remove leading 'et al' word blocks (might overrun from author list if no year before title)
+			while (wordBlocks.size() != 0) {
+				Annotation wb = ((Annotation) wordBlocks.get(0));
+				if ("et al".equals(TokenSequenceUtils.concatTokens(wb, true, true)))
+					wordBlocks.remove(0);
+				else break;
 			}
 		}
 		
@@ -5269,9 +5254,8 @@ Observe in the long haul if any of these rules does more harm than good !!!
 //	private static final String initialsFNS = "I";
 	
 	private static final String etAlSpecialType = "etAl";
-	static final String repetitionMarkerSpecialType = "alrm";
+	private static final String authorListRepetitionMarkMarker = "alrm";
 	private static final String knownAuthorMarker = "kam";
-	private static final String firstAuthorNameAttribute = "firstAuthorName";
 	private static final String authorNameListAttribute = "authorNameList";
 	
 	private static final String namePartOrderAttribute = "npo";
@@ -5391,7 +5375,6 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			if (DEBUG_AUTHOR_NAME_EXTRACTION) System.out.println("    - " + institutionAuthorNames[n]);
 			institutionAuthorNames[n].setAttribute(namePartOrderAttribute, "*");
 			institutionAuthorNames[n].setAttribute(firstNameStyleAttribute, "*");
-			institutionAuthorNames[n].setAttribute(firstAuthorNameAttribute, institutionAuthorNames[n].getValue());
 			institutionAuthorNames[n].setAttribute(institutionNameMarker);
 			institutionAuthorNames[n].changeTypeTo(AUTHOR_ANNOTATION_TYPE);
 			authorNameList.add(institutionAuthorNames[n]);
@@ -5404,18 +5387,16 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			if (DEBUG_AUTHOR_NAME_EXTRACTION) System.out.println("    - " + institutionAcronymAuthorNames[n]);
 			institutionAcronymAuthorNames[n].setAttribute(namePartOrderAttribute, "*");
 			institutionAcronymAuthorNames[n].setAttribute(firstNameStyleAttribute, "*");
-			institutionAcronymAuthorNames[n].setAttribute(firstAuthorNameAttribute, institutionAcronymAuthorNames[n].getValue());
 			institutionAcronymAuthorNames[n].setAttribute(institutionNameMarker);
 			institutionAcronymAuthorNames[n].changeTypeTo(AUTHOR_ANNOTATION_TYPE);
 			authorNameList.add(institutionAcronymAuthorNames[n]);
 		}
 		
 		//	add "et al." to author names (wildcard style attributes)
-		Annotation[] etAlAuthorNames = Gamta.extractAllMatches(bibRef, "((et\\sal)|(ET\\sAL))\\.?", false);
+		Annotation[] etAlAuthorNames = Gamta.extractAllMatches(bibRef, "((et\\sal)|(\\&\\s*al)|(ET\\sAL)|(\\&\\s*AL))\\.?", false);
 		for (int a = 0; a < etAlAuthorNames.length; a++) {
 			etAlAuthorNames[a].changeTypeTo(etAlSpecialType);
 			if (DEBUG_AUTHOR_NAME_EXTRACTION) System.out.println("    - " + etAlAuthorNames[a]);
-			
 			etAlAuthorNames[a].setAttribute(namePartOrderAttribute, "*");
 			etAlAuthorNames[a].setAttribute(firstNameStyleAttribute, "*");
 			authorNameList.add(etAlAuthorNames[a]);
@@ -5429,6 +5410,17 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			}
 		}
 		
+		//	add author repetition markers
+		Annotation[] repeatedAuthorNames = Gamta.extractAllMatches(bibRef, "([\\-]{3,}|[\\_]{3,})", false);
+		for (int a = 0; a < repeatedAuthorNames.length; a++) {
+			repeatedAuthorNames[a].changeTypeTo(AUTHOR_ANNOTATION_TYPE);
+			if (DEBUG_AUTHOR_NAME_EXTRACTION) System.out.println("    - " + repeatedAuthorNames[a]);
+			repeatedAuthorNames[a].setAttribute(namePartOrderAttribute, "*");
+			repeatedAuthorNames[a].setAttribute(firstNameStyleAttribute, "*");
+			repeatedAuthorNames[a].setAttribute(authorListRepetitionMarkMarker);
+			authorNameList.add(repeatedAuthorNames[a]);
+		}
+		
 		//	filter out editor list labels
 		for (int a = 0; a < authorNameList.size(); a++) {
 			Annotation authorName = ((Annotation) authorNameList.get(a));
@@ -5436,7 +5428,14 @@ Observe in the long haul if any of these rules does more harm than good !!!
 				authorNameList.remove(a--);
 		}
 		
-		//	TODO filter out names whose ends are part of title numbers
+		//	filter out author list separators ('AND', etc.)
+		for (int a = 0; a < authorNameList.size(); a++) {
+			Annotation authorName = ((Annotation) authorNameList.get(a));
+			if (this.authorListSeparators.containsIgnoreCase(authorName.getValue()))
+				authorNameList.remove(a--);
+		}
+		
+		//	filter out names whose ends are part of title numbers
 		if (isTitleNumberToken != null) {
 			if (DEBUG_AUTHOR_NAME_EXTRACTION) System.out.println("  - filtering for title numbers");
 			for (int a = 0; a < authorNameList.size(); a++) {
@@ -5466,11 +5465,11 @@ Observe in the long haul if any of these rules does more harm than good !!!
 	}
 	
 	private static class AuthorList {
-		//boolean hasEditorListLabel = false;
 		Annotation editorListLabel;
 		char editorListLabelPos = '*';
 		boolean isSubList = false;
 		boolean isInstitutionName = false;
+		boolean hasRepetitionMarker = false;
 		Annotation annotation;
 		ArrayList authorNames = new ArrayList();
 		LinkedHashSet namePartOrders = new LinkedHashSet();
@@ -5489,6 +5488,8 @@ Observe in the long haul if any of these rules does more harm than good !!!
 				this.authorNames.add(authorName);
 				if (authorName.hasAttribute(institutionNameMarker))
 					this.isInstitutionName = true;
+				else if (authorName.hasAttribute(authorListRepetitionMarkMarker))
+					this.hasRepetitionMarker = true;
 				else {
 					this.namePartOrders.add(authorName.getAttribute(namePartOrderAttribute));
 					this.firstNameStyles.add(authorName.getAttribute(firstNameStyleAttribute));
@@ -5525,7 +5526,7 @@ Observe in the long haul if any of these rules does more harm than good !!!
 				AuthorList al2 = ((AuthorList) obj2);
 				int c = AnnotationUtils.compare(al1.annotation, al2.annotation);
 				if (c != 0)
-					return c; // prefer early-starting log author lists
+					return c; // prefer early-starting long author lists
 				c = (al2.authorNames.size() - al1.authorNames.size());
 				if (c != 0)
 					return c; // prefer author lists with more names
@@ -5616,7 +5617,7 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			}
 			
 			//	author list repetition markers are always at the very beginning
-			if (repetitionMarkerSpecialType.equals(authorNames[a].getType())) {
+			if (authorNames[a].hasAttribute(authorListRepetitionMarkMarker)) {
 				startAuthorNames.add(authorNames[a]);
 				continue;
 			}
@@ -5657,9 +5658,9 @@ Observe in the long haul if any of these rules does more harm than good !!!
 		if (DEBUG_AUTHOR_LIST_ASSEMBLY) System.out.println("Got " + startAuthorNames.size() + " starting author names, " + continueAuthorNames.size() + " continuing ones, " + endAuthorNames.size() + " ending ones, and " + singleAuthorNames.size() + " single ones");
 		
 		//	get list separator(s) as a single pattern
-		String authorListSeparatorPattern = authorNameStyle.getProperty("nameListSeparatorPattern", "(\\,|\\&|and|et|e|y|und)");
+		String authorListSeparatorPattern = authorNameStyle.getProperty("nameListSeparatorPattern", "(\\,|\\;|\\&|and|et|e|y|und)");
 		Annotation[] authorListSeparators = Gamta.extractAllMatches(bibRefAnnot, authorListSeparatorPattern, true);
-		String authorListEndSeparatorPattern = authorNameStyle.getProperty("nameListEndSeparatorPattern", "((\\,\\s*\\&)|(\\,\\s*and)|\\,|\\&|and|et|e|y|und)");
+		String authorListEndSeparatorPattern = authorNameStyle.getProperty("nameListEndSeparatorPattern", "((\\,\\;\\s*\\&)|(\\,\\s*and)|\\,|\\;|\\&|and|et|e|y|und)");
 		Annotation[] authorListEndSeparators = Gamta.extractAllMatches(bibRefAnnot, authorListEndSeparatorPattern, true);
 		
 		//	filter start author names if too many (see above) to prevent combinatoric runaway
@@ -5695,7 +5696,6 @@ Observe in the long haul if any of these rules does more harm than good !!!
 		for (int a = 0; a < singleAuthorNames.size(); a++) {
 			Annotation authorName = ((Annotation) singleAuthorNames.get(a));
 			Annotation authorList = Gamta.newAnnotation(bibRefAnnot, AUTHOR_LIST_ANNOTATION_TYPE, authorName.getStartIndex(), authorName.size());
-			authorList.setAttribute(firstAuthorNameAttribute, TokenSequenceUtils.concatTokens(authorList, true, true));
 			authorListAnnots.add(authorList);
 			authorListStrings.add(authorList.getValue());
 			ArrayList authorNameList = new ArrayList();
@@ -5710,7 +5710,6 @@ Observe in the long haul if any of these rules does more harm than good !!!
 		for (int a = 0; a < startAuthorNames.size(); a++) {
 			Annotation authorName = ((Annotation) startAuthorNames.get(a));
 			Annotation authorList = Gamta.newAnnotation(bibRefAnnot, AUTHOR_LIST_ANNOTATION_TYPE, authorName.getStartIndex(), authorName.size());
-			authorList.setAttribute(firstAuthorNameAttribute, TokenSequenceUtils.concatTokens(authorList, true, true));
 			authorListAnnots.add(authorList);
 			authorListStrings.add(authorList.getValue());
 			ArrayList authorNameList = new ArrayList();
@@ -5989,15 +5988,11 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			if (mtns[n].getPattern().startsWith("<")) {
 				if (mtns[n].getPattern().startsWith("<authorList")) {
 					if (AUTHOR_ANNOTATION_TYPE.equals(mtns[n].getMatch().getType())) {
-						if (!authorList.hasAttribute(firstAuthorNameAttribute))
-							authorList.setAttribute(firstAuthorNameAttribute, TokenSequenceUtils.concatTokens(mtns[n].getMatch(), true, true));
 						ArrayList authorNameList = new ArrayList();
 						authorNameList.add(mtns[n].getMatch());
 						authorList.setAttribute(authorNameListAttribute, authorNameList);
 					}
 					else if (AUTHOR_LIST_ANNOTATION_TYPE.equals(mtns[n].getMatch().getType())) {
-						if (!authorList.hasAttribute(firstAuthorNameAttribute))
-							authorList.setAttribute(firstAuthorNameAttribute, ((String) mtns[n].getMatch().getAttribute(firstAuthorNameAttribute)));
 						ArrayList authorNameList = ((ArrayList) mtns[n].getMatch().getAttribute(authorNameListAttribute));
 						if (authorNameList != null) {
 							authorNameList = new ArrayList(authorNameList); // copy for later expansion
@@ -6031,6 +6026,7 @@ Observe in the long haul if any of these rules does more harm than good !!!
 		HashSet initialsStyles = new HashSet();
 		HashSet lastNameCases = new HashSet();
 		HashSet refIDs = new HashSet();
+		//ArrayList instances = new ArrayList();
 		int instanceCount = 0;
 		int nameCount = 0;
 		int tokenCount = 0;
@@ -6047,7 +6043,13 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			this.lastNameCases.addAll(al.lastNameCases);
 		}
 		boolean isCompatible(AuthorList al) {
-			return ((this.namePartOrders.contains("*") || this.namePartOrders.containsAll(al.namePartOrders)) && (this.firstNameStyles.contains("*") || this.firstNameStyles.containsAll(al.firstNameStyles)) && (this.lastNameCases.contains("*") || this.lastNameCases.containsAll(al.lastNameCases)));
+			return (
+					(this.namePartOrders.contains("*") || this.namePartOrders.containsAll(al.namePartOrders))
+					&&
+					(this.firstNameStyles.contains("*") || this.firstNameStyles.containsAll(al.firstNameStyles))
+					&&
+					(this.lastNameCases.contains("*") || this.lastNameCases.containsAll(al.lastNameCases))
+				);
 		}
 		boolean isCompatible(Annotation authorName) {
 			return ((this.namePartOrders.contains("*") || this.namePartOrders.contains(authorName.getAttribute(namePartOrderAttribute))) && (this.firstNameStyles.contains("*") || this.firstNameStyles.contains(authorName.getAttribute(firstNameStyleAttribute))) && (this.lastNameCases.contains("*") || this.lastNameCases.contains(authorName.getAttribute(lastNameCaseAttribute))));
@@ -6067,9 +6069,33 @@ Observe in the long haul if any of these rules does more harm than good !!!
 		for (int r = 0; r < bibRefs.length; r++) {
 			if (bibRefs[r].preExistingStructure)
 				continue;
+			
+			//	mark nested sub lists
+			Arrays.sort(bibRefs[r].authorLists, AuthorList.authorListOrder);
+			for (int l = 0; l < bibRefs[r].authorLists.length; l++) {
+				for (int ll = (l+1); ll < bibRefs[r].authorLists.length; ll++) {
+					if (bibRefs[r].authorLists[l].annotation.getEndIndex() <= bibRefs[r].authorLists[ll].annotation.getStartIndex())
+						break; // no further nesting relations to come
+					if (bibRefs[r].authorLists[l].annotation.getEndIndex() < bibRefs[r].authorLists[ll].annotation.getEndIndex())
+						continue; // not nested
+					if (!bibRefs[r].authorLists[l].namePartOrders.containsAll(bibRefs[r].authorLists[ll].namePartOrders))
+						continue; // not a sub list
+					if (!bibRefs[r].authorLists[l].firstNameStyles.containsAll(bibRefs[r].authorLists[ll].firstNameStyles))
+						continue; // not a sub list
+					if (!bibRefs[r].authorLists[l].lastNameCases.containsAll(bibRefs[r].authorLists[ll].lastNameCases))
+						continue; // not a sub list
+					if (bibRefs[r].authorLists[l].annotation.size() <= bibRefs[r].authorLists[ll].annotation.size())
+						continue; // not a sub list
+					bibRefs[r].authorLists[ll].isSubList = true;
+				}
+			}
+			
+			//	cluster the author lists
 			for (int l = 0; l < bibRefs[r].authorLists.length; l++) {
 				if (bibRefs[r].authorLists[l].isInstitutionName)
 					continue; // let's not generate empty styles
+				if (bibRefs[r].authorLists[l].hasRepetitionMarker && (bibRefs[r].authorLists[l].authorNames.size() == 1))
+					continue; // let's still not generate empty styles
 				countAuthorListToStyle(bibRefs[r].authorLists[l], bibRefs[r], bibRefs.length, authorListStyles);
 				
 				//	support only if no LF-FL candidate available for this reference!!
@@ -6080,7 +6106,7 @@ Observe in the long haul if any of these rules does more harm than good !!!
 				if (bibRefs[r].authorLists[l].authorNames.size() > 1)
 					continue;
 				
-				//	single name list in last-first order, have to support name switching style
+				//	single name list in last-first order, have to support order switching style
 				if (bibRefs[r].authorLists[l].namePartOrders.contains("LnFn")) {
 					bibRefs[r].authorLists[l].namePartOrders.add("FnLn");
 					countAuthorListToStyle(bibRefs[r].authorLists[l], bibRefs[r], bibRefs.length, authorListStyles);
@@ -6114,6 +6140,9 @@ Observe in the long haul if any of these rules does more harm than good !!!
 					System.out.print(b + " (" + als.bridged.getCount(b) + ")" + (bit.hasNext() ? ", " : ""));
 				}
 				System.out.println();
+//				System.out.println("   - instances:");
+//				for (int i = 0; i < als.instances.size(); i++)
+//					System.out.println("     - " + ((Annotation) als.instances.get(i)).toXML());
 			}
 			
 			//	more names than styles, void support vote (can happen with few references)
@@ -6275,6 +6304,9 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			else if (DEBUG_AUTHOR_LIST_ASSEMBLY) System.out.println("  ==> same or more name part orders");
 			
 			//	TODO maybe also consider number of bridged tokens, fewer = better
+			//	TODO if so, maybe also reward bridged _separators_, as those are normal syntax
+			
+			//	TODO maybe also reward constant proximity to adjacent details, with at most some separating punctuation in between
 		}
 		
 		//	finally
@@ -6289,6 +6321,7 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			authorListStyles.put(als.key, als);
 		}
 		if (als.refIDs.add(bibRef.annotation.getAnnotationID()) || (bibRefCount >= 3)) {
+//			als.instances.add(authorList.annotation);
 			als.instanceCount++;
 			als.nameCount += authorList.authorNames.size();
 			als.tokenCount += authorList.annotation.size();
@@ -6450,11 +6483,6 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			}
 			else if (authorListStyle.isCompatible(bibRef.authorLists[l])) {
 				authorLists.add(bibRef.authorLists[l]);
-				if (repetitionMarkerSpecialType.equals(((Annotation) bibRef.authorLists[l].authorNames.get(0)).getType())) {
-					Annotation rm = ((Annotation) bibRef.authorLists[l].authorNames.get(0));
-					rm.changeTypeTo(AUTHOR_ANNOTATION_TYPE);
-					rm.setAttribute(repetitionMarkerSpecialType, repetitionMarkerSpecialType);
-				}
 				if (bibRef.authorLists[l].editorListLabel != null)
 					gotLabeledEditorLists = true;
 				if (DEBUG) System.out.println("  ==> retained " + AuthorListStyle.getKey(bibRef.authorLists[l]));
@@ -6850,7 +6878,7 @@ Observe in the long haul if any of these rules does more harm than good !!!
 					break; // too far apart
 				if (isAuthorName[cAuthorName.getStartIndex()])
 					continue; // marked before, don't bridge into already-charted territory
-				if (cAuthorName.getStartIndex() > authorName.getEndIndex()) {
+				if ((cAuthorName.getStartIndex() > authorName.getEndIndex()) && (authorListStyle != null)) {
 					String separator = bibRef.annotation.valueAt(authorName.getEndIndex());
 					int separatorCount = authorListStyle.bridged.getCount(separator);
 					if (DEBUG) System.out.println("   - attempting to bridge '" + separator + "', bridged " + separatorCount + " times in " + bibRefCount + " references");
@@ -6889,7 +6917,7 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			for (int a = 0; a < bibRef.authorNames.length; a++) {
 				if (AnnotationUtils.liesIn(bibRef.authorNames[a], authorListGap)) {
 					if (DEBUG) System.out.println("   - got contained name " + bibRef.authorNames[a].toXML());
-					boolean authorNameCompatible = authorListStyle.isCompatible(bibRef.authorNames[a]);
+					boolean authorNameCompatible = ((authorListStyle == null) || authorListStyle.isCompatible(bibRef.authorNames[a]));
 					if (DEBUG) System.out.println("   - style compatible is " + authorNameCompatible);
 					if ((fillAuthorName == null) || (authorNameCompatible && !fillAuthorNameCompatible)) {
 						fillAuthorName = bibRef.authorNames[a];
@@ -6990,7 +7018,7 @@ Observe in the long haul if any of these rules does more harm than good !!!
 		if (DEBUG) System.out.println("                            meaning is " + albFixed);
 		
 		//	if NPO is 'LnIn', insert space before any terminating (sequence of) capital letters, especially if followed by dots (salvages author names with missing middle space)
-		if ((authorListStyle.namePartOrders.size() == 1) && authorListStyle.namePartOrders.contains("LnIn")) {
+		if ((authorListStyle != null) && (authorListStyle.namePartOrders.size() == 1) && authorListStyle.namePartOrders.contains("LnIn")) {
 			Pattern aa_initial = Pattern.compile("[a-z][a-z][A-Z][a-z]?(\\.|\\b)");
 			for (Matcher m = aa_initial.matcher(alb); m.find();) {
 				if (albFixed.charAt(m.start()) == 'A')
@@ -7005,7 +7033,7 @@ Observe in the long haul if any of these rules does more harm than good !!!
 		}
 		
 		//	if FNS is 'I' and InS is 'D', append dot to every tailing or space-terminated sequence of a capital letter and at most one lower case one (salvages initials with missing dots)
-		if ((authorListStyle.firstNameStyles.size() == 1) && authorListStyle.firstNameStyles.contains("I") && authorListStyle.initialsStyles.contains("D")) {
+		if ((authorListStyle != null) && (authorListStyle.firstNameStyles.size() == 1) && authorListStyle.firstNameStyles.contains("I") && authorListStyle.initialsStyles.contains("D")) {
 			Pattern initial_noDot = Pattern.compile("[^a-zA-Z][A-Z][a-z]?[^\\.a-zA-Z]");
 			for (Matcher m = initial_noDot.matcher(alb); m.find();) {
 				if (albFixed.charAt(m.start()) == 'A')
@@ -7025,7 +7053,7 @@ Observe in the long haul if any of these rules does more harm than good !!!
 		if (DEBUG) System.out.println("Got salvaged author names:");
 		for (int a = 0; a < authorNames.length; a++) {
 			if (DEBUG) System.out.println(" - " + authorNames[a].toXML());
-			boolean authorNameCompatible = authorListStyle.isCompatible(authorNames[a]);
+			boolean authorNameCompatible = ((authorListStyle == null) || authorListStyle.isCompatible(authorNames[a]));
 			if (DEBUG) System.out.println("   style compatible is " + authorNameCompatible);
 			if (authorNameCompatible) {
 				int authorNameStartOffset = ((Integer) albIndices.get(authorNames[a].getStartOffset())).intValue();
@@ -7437,6 +7465,14 @@ Observe in the long haul if any of these rules does more harm than good !!!
 		for (int i = 0; i < partDesignatorInvalidatorTailingAnnots.length; i++)
 			partDesignatorInvalidatorsTailing.put(new Integer(partDesignatorInvalidatorTailingAnnots[i].getStartIndex()), partDesignatorInvalidatorTailingAnnots[i]);
 		
+		//	find first actual word (part designators hardly ever occur at the start, or even before the journal name)
+		int firstWordIndex = 0;
+		for (; firstWordIndex < bibRef.annotation.size(); firstWordIndex++) {
+			String token = bibRef.annotation.valueAt(firstWordIndex);
+			if ((token.length() > 1) && Gamta.isWord(token))
+				break;
+		}
+		
 		//	get part designators
 		Annotation[] partDesignatorAnnots = Gamta.extractAllMatches(bibRef.annotation, this.partDesignatorRegEx, false);
 		ArrayList partDesignators = new ArrayList();
@@ -7445,7 +7481,11 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			if (DEBUG) System.out.println("Found possible part designator: " + partDesignatorAnnots[p].getValue());
 			
 			//	this one is likely a reference number, not a part designator
-			if (partDesignatorAnnots[p].getStartIndex() == 0) {
+			//	TODO TEST Gleicher-2011-Visual comparison for information visualization.pdf (FFB7FFEAFFAFFFA5FF9FFF8F48577C63)
+			//	TODO optionally (style parameter) handle '<volume>.<issue>' part designators
+			//	TODO TEST Peckhamia (FFE8FFB47A43FFC5FFABFFC3FFC2FFAA)
+//			if (partDesignatorAnnots[p].getStartIndex() == 0) {
+			if (partDesignatorAnnots[p].getStartIndex() < firstWordIndex) {
 				if (DEBUG) System.out.println(" --> at start, ignoring");
 				continue;
 			}
@@ -8056,7 +8096,7 @@ Observe in the long haul if any of these rules does more harm than good !!!
 	private void truncatePunctuation(MutableAnnotation bibRef, String detailType, String retainStart, String retainEnd) {
 		Annotation[] details = bibRef.getAnnotations(detailType);
 		for (int d = 0; d < details.length; d++) {
-			if ((d == 0) && AUTHOR_ANNOTATION_TYPE.equals(detailType) && details[0].hasAttribute(repetitionMarkerSpecialType))
+			if ((d == 0) && AUTHOR_ANNOTATION_TYPE.equals(detailType) && details[0].hasAttribute(authorListRepetitionMarkMarker))
 				continue;
 			this.truncatePunctuation(bibRef, details[d], retainStart, retainEnd);
 		}
@@ -8166,7 +8206,7 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			
 			//	with repetition sign, make way for transfer
 			if (AUTHOR_ANNOTATION_TYPE.equals(detailType))
-				while ((details.length != 0) && details[0].hasAttribute(repetitionMarkerSpecialType)) {
+				while ((details.length != 0) && details[0].hasAttribute(authorListRepetitionMarkMarker)) {
 					MutableAnnotation[] nDetails = new MutableAnnotation[details.length - 1];
 					System.arraycopy(details, 1, nDetails, 0, nDetails.length);
 					if (detail == null) {
@@ -8200,9 +8240,9 @@ Observe in the long haul if any of these rules does more harm than good !!!
 				//	concatenate authors and editors with separating ' & '
 				if (AUTHOR_ANNOTATION_TYPE.equals(detailType) || EDITOR_ANNOTATION_TYPE.equals(detailType)) {
 					for (int d = 0; d < details.length; d++) {
-						if (detail != null)
-							detail += (" & " + TokenSequenceUtils.concatTokens(details[d], true, true));
-						else detail = TokenSequenceUtils.concatTokens(details[d], true, true);
+						if (detail == null)
+							detail = TokenSequenceUtils.concatTokens(details[d], true, true);
+						else detail += (" & " + TokenSequenceUtils.concatTokens(details[d], true, true));
 					}
 					
 					//	get author from transfer list if omitted completely (not editors, though, as many references do not include or imply any)
@@ -8211,7 +8251,8 @@ Observe in the long haul if any of these rules does more harm than good !!!
 				}
 				
 				//	use only first token for year
-				else if (YEAR_ANNOTATION_TYPE.equals(detailType)) detail = ((details.length == 0) ? transferDetails.getProperty(detailType) : details[0].firstValue());
+				else if (YEAR_ANNOTATION_TYPE.equals(detailType))
+					detail = ((details.length == 0) ? transferDetails.getProperty(detailType) : details[0].firstValue());
 				
 				//	use only first value for all other elements
 				else detail = ((details.length == 0) ? transferDetails.getProperty(detailType) : TokenSequenceUtils.concatTokens(details[0], true, true));
@@ -8222,12 +8263,6 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			if ((detail != null) && this.transferableTypes.contains(detailType))
 				transferDetails.setProperty(detailType, detail);
 		}
-		
-		//	handle volume reference details
-		details = bibRef.getMutableAnnotations(EDITOR_ANNOTATION_TYPE);
-		bibRef.setAttribute(EDITOR_ANNOTATION_TYPE, ((details.length == 0) ? null : TokenSequenceUtils.concatTokens(details[0], true, true)));
-		details = bibRef.getMutableAnnotations(VOLUME_TITLE_ANNOTATION_TYPE);
-		bibRef.setAttribute(VOLUME_TITLE_ANNOTATION_TYPE, ((details.length == 0) ? null : TokenSequenceUtils.concatTokens(details[0], true, true)));
 	}
 	
 	MutableAnnotation[] getFeedback(MutableAnnotation data, MutableAnnotation[] bibRefs, boolean allowRemove, boolean allowSplit, ProgressMonitor pm) {
