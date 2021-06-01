@@ -66,6 +66,9 @@ import de.uka.ipd.idaho.gamta.util.AnnotationPatternMatcher.AnnotationIndex;
 import de.uka.ipd.idaho.gamta.util.AnnotationPatternMatcher.MatchTree;
 import de.uka.ipd.idaho.gamta.util.AnnotationPatternMatcher.MatchTreeNode;
 import de.uka.ipd.idaho.gamta.util.CountingSet;
+import de.uka.ipd.idaho.gamta.util.DocumentStyle;
+import de.uka.ipd.idaho.gamta.util.DocumentStyle.ParameterGroupDescription;
+import de.uka.ipd.idaho.gamta.util.DocumentStyle.PropertiesData;
 import de.uka.ipd.idaho.gamta.util.ProgressMonitor;
 import de.uka.ipd.idaho.gamta.util.ProgressMonitor.CascadingProgressMonitor;
 import de.uka.ipd.idaho.gamta.util.analyzerConfiguration.AnalyzerConfigPanel;
@@ -74,8 +77,6 @@ import de.uka.ipd.idaho.gamta.util.feedback.html.FeedbackPanelHtmlRenderer.Feedb
 import de.uka.ipd.idaho.gamta.util.feedback.html.renderers.AnnotationEditorFeedbackPanelRenderer;
 import de.uka.ipd.idaho.gamta.util.feedback.html.renderers.BufferedLineWriter;
 import de.uka.ipd.idaho.gamta.util.feedback.panels.AnnotationEditorFeedbackPanel;
-import de.uka.ipd.idaho.gamta.util.imaging.DocumentStyle;
-import de.uka.ipd.idaho.gamta.util.imaging.DocumentStyle.ParameterGroupDescription;
 import de.uka.ipd.idaho.gamta.util.imaging.ImagingConstants;
 import de.uka.ipd.idaho.plugins.bibRefs.BibRefConstants;
 import de.uka.ipd.idaho.plugins.bibRefs.BibRefTypeSystem;
@@ -140,6 +141,8 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 				color = Color.YELLOW;
 			else if (JOURNAL_NAME_ANNOTATION_TYPE.equals(type))
 				color = Color.CYAN;
+			else if (SERIES_IN_JOURNAL_ANNOTATION_TYPE.equals(type))
+				color = FeedbackPanel.darken(Color.CYAN);
 			else if (PUBLISHER_ANNOTATION_TYPE.equals(type))
 				color = Color.YELLOW;
 			else if (LOCATION_ANNOTATION_TYPE.equals(type))
@@ -658,6 +661,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		if (detailOrigin) {
 			this.relevantTypes.addElementIgnoreDuplicates(VOLUME_TITLE_ANNOTATION_TYPE);
 			this.relevantTypes.addElementIgnoreDuplicates(JOURNAL_NAME_ANNOTATION_TYPE);
+			this.relevantTypes.addElementIgnoreDuplicates(SERIES_IN_JOURNAL_ANNOTATION_TYPE);
 			this.relevantTypes.addElementIgnoreDuplicates(PUBLISHER_ANNOTATION_TYPE);
 			this.relevantTypes.addElementIgnoreDuplicates(LOCATION_ANNOTATION_TYPE);
 			this.relevantTypes.removeAll(JOURNAL_NAME_OR_PUBLISHER_ANNOTATION_TYPE);
@@ -665,6 +669,7 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		else {
 			this.relevantTypes.removeAll(VOLUME_TITLE_ANNOTATION_TYPE);
 			this.relevantTypes.removeAll(JOURNAL_NAME_ANNOTATION_TYPE);
+			this.relevantTypes.removeAll(SERIES_IN_JOURNAL_ANNOTATION_TYPE);
 			this.relevantTypes.removeAll(PUBLISHER_ANNOTATION_TYPE);
 			this.relevantTypes.removeAll(LOCATION_ANNOTATION_TYPE);
 			this.relevantTypes.addElementIgnoreDuplicates(JOURNAL_NAME_OR_PUBLISHER_ANNOTATION_TYPE);
@@ -947,6 +952,8 @@ public abstract class RefParse extends AbstractConfigurableAnalyzer implements B
 		
 		//	get document style if available
 		DocumentStyle docStyle = DocumentStyle.getStyleFor(data);
+		if (docStyle == null)
+			docStyle = new DocumentStyle(new PropertiesData(new Properties()));
 		DocumentStyle bibRefStyle = docStyle.getSubset(BIBLIOGRAPHIC_REFERENCE_TYPE);
 		
 		//	do parsing
@@ -1907,6 +1914,7 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			wordBlocks.addAll(Arrays.asList(bibRef.annotation.getAnnotations(VOLUME_TITLE_ANNOTATION_TYPE)));
 			wordBlocks.addAll(Arrays.asList(bibRef.annotation.getAnnotations(JOURNAL_NAME_OR_PUBLISHER_ANNOTATION_TYPE)));
 			wordBlocks.addAll(Arrays.asList(bibRef.annotation.getAnnotations(JOURNAL_NAME_ANNOTATION_TYPE)));
+			wordBlocks.addAll(Arrays.asList(bibRef.annotation.getAnnotations(SERIES_IN_JOURNAL_ANNOTATION_TYPE)));
 			wordBlocks.addAll(Arrays.asList(bibRef.annotation.getAnnotations(PUBLISHER_ANNOTATION_TYPE)));
 			wordBlocks.addAll(Arrays.asList(bibRef.annotation.getAnnotations(LOCATION_ANNOTATION_TYPE)));
 		}
@@ -4273,9 +4281,9 @@ Observe in the long haul if any of these rules does more harm than good !!!
 					if (DEBUG) System.out.println(" - giving up at block starting before " + Math.max(minJournalStart, minPublisherStart) + ": '" + bibRef.wordBlocks[b].getValue() + "'");
 					break;
 				}
-				if ((bibRef.bookContentInfos.size() != 0) && (bibRef.wordBlocks[b].getEndIndex() > maxPublisherEnd) &&  (bibRef.wordBlocks[lJopBlockIndex].getStartIndex() < maxPublisherEnd))
+				if ((bibRef.bookContentInfos.size() != 0) && (bibRef.wordBlocks[b].getEndIndex() > maxPublisherEnd) && (lJopBlockIndex < bibRef.wordBlocks.length) && (bibRef.wordBlocks[lJopBlockIndex].getStartIndex() < maxPublisherEnd))
 					continue;
-				if ((partDesCount != 0) && (bibRef.wordBlocks[b].getEndIndex() > maxJournalEnd) && (bibRef.wordBlocks[lJopBlockIndex].getStartIndex() < maxJournalEnd))
+				if ((partDesCount != 0) && (bibRef.wordBlocks[b].getEndIndex() > maxJournalEnd) && (lJopBlockIndex < bibRef.wordBlocks.length) && (bibRef.wordBlocks[lJopBlockIndex].getStartIndex() < maxJournalEnd))
 					continue;
 				if (!bibRef.wordBlocks[b].firstValue().matches("[A-Z].*"))
 					continue;
@@ -5597,7 +5605,7 @@ Observe in the long haul if any of these rules does more harm than good !!!
 		boolean[] isNobleTitleToken = this.markNobleTitleTokens(bibRef, bibRefAnnot);
 		
 		//	get name part order (if any)
-		String namePartOrder = authorNameStyle.getProperty("namePartOrder");
+		String namePartOrder = authorNameStyle.getStringProperty("namePartOrder", null);
 		
 		//	sort author names in startAuthorName, continueAuthorName, and endAuthorName categories
 		ArrayList singleAuthorNames = new ArrayList();
@@ -5658,9 +5666,9 @@ Observe in the long haul if any of these rules does more harm than good !!!
 		if (DEBUG_AUTHOR_LIST_ASSEMBLY) System.out.println("Got " + startAuthorNames.size() + " starting author names, " + continueAuthorNames.size() + " continuing ones, " + endAuthorNames.size() + " ending ones, and " + singleAuthorNames.size() + " single ones");
 		
 		//	get list separator(s) as a single pattern
-		String authorListSeparatorPattern = authorNameStyle.getProperty("nameListSeparatorPattern", "(\\,|\\;|\\&|and|et|e|y|und)");
+		String authorListSeparatorPattern = authorNameStyle.getStringProperty("nameListSeparatorPattern", "(\\,|\\;|\\&|and|et|e|y|und)");
 		Annotation[] authorListSeparators = Gamta.extractAllMatches(bibRefAnnot, authorListSeparatorPattern, true);
-		String authorListEndSeparatorPattern = authorNameStyle.getProperty("nameListEndSeparatorPattern", "((\\,\\;\\s*\\&)|(\\,\\s*and)|\\,|\\;|\\&|and|et|e|y|und)");
+		String authorListEndSeparatorPattern = authorNameStyle.getStringProperty("nameListEndSeparatorPattern", "((\\,\\;\\s*\\&)|(\\,\\s*and)|\\,|\\;|\\&|and|et|e|y|und)");
 		Annotation[] authorListEndSeparators = Gamta.extractAllMatches(bibRefAnnot, authorListEndSeparatorPattern, true);
 		
 		//	filter start author names if too many (see above) to prevent combinatoric runaway
@@ -7484,9 +7492,14 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			//	TODO TEST Gleicher-2011-Visual comparison for information visualization.pdf (FFB7FFEAFFAFFFA5FF9FFF8F48577C63)
 			//	TODO optionally (style parameter) handle '<volume>.<issue>' part designators
 			//	TODO TEST Peckhamia (FFE8FFB47A43FFC5FFABFFC3FFC2FFAA)
-//			if (partDesignatorAnnots[p].getStartIndex() == 0) {
 			if (partDesignatorAnnots[p].getStartIndex() < firstWordIndex) {
 				if (DEBUG) System.out.println(" --> at start, ignoring");
+				continue;
+			}
+			
+			//	this one is likely an e-publication page number, not a part designator
+			if ((partDesignatorAnnots[p].getStartIndex() != 0) && "e".equals(bibRef.annotation.valueAt(partDesignatorAnnots[p].getStartIndex()-1))) {
+				if (DEBUG) System.out.println(" --> e-publication page number, ignoring");
 				continue;
 			}
 			
@@ -8082,6 +8095,7 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			this.truncatePunctuation(bibRefs[r], YEAR_ANNOTATION_TYPE, "", "");
 			if (detailOrigin) {
 				this.truncatePunctuation(bibRefs[r], JOURNAL_NAME_ANNOTATION_TYPE, "", ".");
+				this.truncatePunctuation(bibRefs[r], SERIES_IN_JOURNAL_ANNOTATION_TYPE, "", ".");
 				this.truncatePunctuation(bibRefs[r], PUBLISHER_ANNOTATION_TYPE, "", ".");
 				this.truncatePunctuation(bibRefs[r], LOCATION_ANNOTATION_TYPE, "", ".");
 			}
@@ -8474,8 +8488,8 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			this.functionPanel.add(this.noBibRef, BorderLayout.EAST);
 			this.add(this.functionPanel, BorderLayout.NORTH);
 			
-			this.annotationEditor.setFontSize(12);
-			this.annotationEditor.setFontName("Verdana");
+//			this.annotationEditor.setFontSize(12);
+//			this.annotationEditor.setFontName("Verdana");
 			this.add(this.annotationEditor, BorderLayout.CENTER);
 		}
 		
@@ -8549,8 +8563,8 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			bw.newLine();
 			bw.write(((BibRefType) this.bibRefType.getSelectedItem()).name);
 			bw.newLine();
-			for (int c = 0; c < this.bibRefType.getItemCount(); c++) {
-				bw.write(((BibRefType) this.bibRefType.getItemAt(c)).toDataString());
+			for (int t = 0; t < this.bibRefType.getItemCount(); t++) {
+				bw.write(((BibRefType) this.bibRefType.getItemAt(t)).toDataString());
 				bw.newLine();
 			}
 			bw.newLine();
@@ -8582,14 +8596,13 @@ Observe in the long haul if any of these rules does more harm than good !!!
 			String selectedType = br.readLine();
 			
 			//	read bibRefType list
-			String line;
 			TreeSet types = new TreeSet();
-			while (((line = br.readLine()) != null) && (line.length() != 0)) {
-				BibRefType type = BibRefType.parseDataString(line);
+			for (String typeData; ((typeData = br.readLine()) != null) && (typeData.length() != 0);) {
+				BibRefType type = BibRefType.parseDataString(typeData);
 				if (type != null)
 					types.add(type);
 			}
-			this.setBibRefTypes((BibRefType[]) types.toArray(new TreeSet[types.size()]));
+			this.setBibRefTypes((BibRefType[]) types.toArray(new BibRefType[types.size()]));
 			this.setBibRefType(new BibRefType(selectedType));
 			
 			//	read content
