@@ -6385,12 +6385,16 @@ Observe in the long haul if any of these rules does more harm than good !!!
 //			if (reselectAuthorListStyle) {
 			if ((nonStyleCompatibleLabeledEditorListBibRefCount * 2) > labeledEditorListBibRefCount) {
 				authorListStyle = this.getAuthorListStyle(bibRefs);
-				if (DEBUG) {
+				if (DEBUG && (authorListStyle != null)) {
 					System.out.println("Reselected author list style as " + authorListStyle.key + " with score " + authorListStyle.alignmentScore);
 					System.out.println("Author list alignment now is " + (authorListStyle.isLeading ? "leading" : "tailing"));
 				}
 			}
 		}
+		
+		//	anything to work with?
+		if (authorListStyle == null)
+			return;
 		
 		//	sort out author lists
 		for (int r = 0; r < bibRefs.length; r++) {

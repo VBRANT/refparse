@@ -61,9 +61,15 @@ public class TokenBagDictionary implements Dictionary {
 	/**  lower case parts allowed in lookups */
 	private Set lowerCaseTokens = new HashSet() {
 		public boolean contains(Object o) {
-			if ((o instanceof String) && (((String) o).length() == 1) && (Gamta.LOWER_CASE_LETTERS.indexOf(((String) o).charAt(0)) != -1))
+			if ((o instanceof String) && this.isLowerCaseLetter((String) o))
 				return true;
 			return super.contains(o);
+		}
+		private boolean isLowerCaseLetter(String str) {
+			if (str.length() != 1)
+				return false;
+			char ch = str.charAt(0);
+			return (Character.isLetter(ch) && Character.isLowerCase(ch));
 		}
 	};
 //	/** normalized entries (concatenation of capitalized tokens in lexicographical or original order, depending on order sensitivity) */
